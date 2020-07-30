@@ -1,5 +1,5 @@
-#ifndef SRAM_23K256
-#define SRAM_23K256
+#ifndef SRAM_23K256_HPP
+#define SRAM_23K256_HPP
 
 #include "LLPD.hpp"
 
@@ -20,4 +20,4 @@ class Sram_23K256
 		GPIO_PIN  m_CSPin;
 };
 
-#endif // SRAM_23K256
+#endif // SRAM_23K256_HPP

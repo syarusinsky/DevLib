@@ -1,5 +1,5 @@
-#ifndef EEPROM_CAT24C64
-#define EEPROM_CAT24C64
+#ifndef EEPROM_CAT24C64_HPP
+#define EEPROM_CAT24C64_HPP
 
 #include "LLPD.hpp"
 
@@ -19,4 +19,4 @@ class Eeprom_CAT24C64
 		I2C_NUM m_I2CNum;
 };
 
-#endif // CAT24C64_EEPROM
+#endif // CAT24C64_EEPROM_HPP
