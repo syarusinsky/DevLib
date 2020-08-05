@@ -3,6 +3,9 @@
 
 #include "LLPD.hpp"
 
+#define NEO_TRELLIS_NUM_ROWS 4
+#define NEO_TRELLIS_NUM_COLUMNS 4
+
 #define NEO_TRELLIS_KEY(x) (((x) / 4) * 8 + ((x) % 4))
 #define NEO_TRELLIS_KEY_RELEASED(x) ((x % 2) == 0)
 
@@ -24,6 +27,11 @@
 #define SEESAW_KEYPAD_COUNT 0x04
 #define SEESAW_KEYPAD_FIFO 0x10
 
+class Neotrellis;
+
+typedef void(*NeotrellisCallback)(Neotrellis*, bool, uint8_t, uint8_t); // bool is true if released, false if pressed.
+									// the first uint8_t is the row, the second is the column
+
 class Neotrellis
 {
 	public:
@@ -32,15 +40,18 @@ class Neotrellis
 
 		void begin();
 
+		void setColor (uint8_t keyRow, uint8_t keyCol, uint8_t r, uint8_t g, uint8_t b);
+
 		void pollForEvents();
 
-		void test();
+		void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback);
 
 	private:
-		const I2C_NUM   m_I2CNum;
-		const uint8_t   m_I2CAddr;
-		const GPIO_PORT m_IntPort;
-		const GPIO_PIN  m_IntPin;
+		const I2C_NUM   	m_I2CNum;
+		const uint8_t   	m_I2CAddr;
+		const GPIO_PORT 	m_IntPort;
+		const GPIO_PIN  	m_IntPin;
+		NeotrellisCallback 	m_Callbacks[NEO_TRELLIS_NUM_ROWS * NEO_TRELLIS_NUM_COLUMNS];
 };
 
 #endif // NEOTRELLIS_HPP
