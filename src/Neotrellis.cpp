@@ -113,3 +113,65 @@ void Neotrellis::registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCal
 {
 	m_Callbacks[ keyCol + (keyRow * NEO_TRELLIS_NUM_ROWS) ] = callback;
 }
+
+Multitrellis::Multitrellis (unsigned int stackedRows, unsigned int stackedColumns, const I2C_NUM& i2cNum, uint8_t i2cAddresses[],
+				const GPIO_PORT& intPort, const GPIO_PIN& intPin) :
+	m_NumStackedRows( stackedRows ),
+	m_NumStackedCols( stackedColumns ),
+	m_NeotrellisArr{ nullptr }
+{
+	for ( unsigned int neotrellis = 0; neotrellis < (stackedRows * stackedColumns); neotrellis++ )
+	{
+		m_NeotrellisArr[neotrellis] = new Neotrellis( i2cNum, i2cAddresses[neotrellis], intPort, intPin );
+	}
+}
+
+Multitrellis::~Multitrellis()
+{
+	for ( unsigned int neotrellis = 0; neotrellis < (m_NumStackedRows * m_NumStackedCols); neotrellis++ )
+	{
+		delete m_NeotrellisArr[neotrellis];
+	}
+}
+
+void Multitrellis::begin()
+{
+	for ( unsigned int neotrellis = 0; neotrellis < (m_NumStackedRows * m_NumStackedCols); neotrellis++ )
+	{
+		m_NeotrellisArr[neotrellis]->begin();
+	}
+}
+
+void Multitrellis::setColor (unsigned int keyRow, unsigned int keyCol, uint8_t r, uint8_t g, uint8_t b)
+{
+	if ( keyRow < (m_NumStackedRows * NEO_TRELLIS_NUM_ROWS) && keyCol < (m_NumStackedCols * NEO_TRELLIS_NUM_COLUMNS) )
+	{
+		unsigned int xTravel = keyCol / NEO_TRELLIS_NUM_COLUMNS;
+		unsigned int yTravel = ( keyRow / NEO_TRELLIS_NUM_ROWS ) * m_NumStackedCols;
+		unsigned int neotrellisOffset = xTravel + yTravel;
+
+		m_NeotrellisArr[neotrellisOffset]->setColor( keyRow % NEO_TRELLIS_NUM_ROWS, keyCol % NEO_TRELLIS_NUM_COLUMNS,
+								r, g, b );
+	}
+}
+
+void Multitrellis::pollForEvents()
+{
+	for ( unsigned int neotrellis = 0; neotrellis < (m_NumStackedRows * m_NumStackedCols); neotrellis++ )
+	{
+		m_NeotrellisArr[neotrellis]->pollForEvents();
+	}
+}
+
+void Multitrellis::registerCallback (unsigned int keyRow, unsigned int keyCol, NeotrellisCallback callback)
+{
+	if ( keyRow < (m_NumStackedRows * NEO_TRELLIS_NUM_ROWS) && keyCol < (m_NumStackedCols * NEO_TRELLIS_NUM_COLUMNS) )
+	{
+		unsigned int xTravel = keyCol / NEO_TRELLIS_NUM_COLUMNS;
+		unsigned int yTravel = ( keyRow / NEO_TRELLIS_NUM_ROWS ) * m_NumStackedCols;
+		unsigned int neotrellisOffset = xTravel + yTravel;
+
+		m_NeotrellisArr[neotrellisOffset]->registerCallback( keyRow % NEO_TRELLIS_NUM_ROWS, keyCol % NEO_TRELLIS_NUM_COLUMNS,
+									callback );
+	}
+}

@@ -9,6 +9,8 @@
 #define NEO_TRELLIS_KEY(x) (((x) / 4) * 8 + ((x) % 4))
 #define NEO_TRELLIS_KEY_RELEASED(x) ((x % 2) == 0)
 
+#define NEO_TRELLIS_MAX_TILES 32
+
 #define SEESAW_NEOTRELLIS_HW_ID 0x55
 #define SEESAW_STATUS_BASE 0x00
 #define SEESAW_STATUS_SWRST 0x7F
@@ -52,6 +54,28 @@ class Neotrellis
 		const GPIO_PORT 	m_IntPort;
 		const GPIO_PIN  	m_IntPin;
 		NeotrellisCallback 	m_Callbacks[NEO_TRELLIS_NUM_ROWS * NEO_TRELLIS_NUM_COLUMNS];
+};
+
+class Multitrellis
+{
+	public:
+		// you need to pass in the i2c addresses in row-major order
+		Multitrellis (unsigned int stackedRows, unsigned int stackedColumns, const I2C_NUM& i2cNum, uint8_t i2cAddresses[],
+				const GPIO_PORT& intPort, const GPIO_PIN& intPin);
+		~Multitrellis();
+
+		void begin();
+
+		void setColor (unsigned int keyRow, unsigned int keyCol, uint8_t r, uint8_t g, uint8_t b);
+
+		void pollForEvents();
+
+		void registerCallback (unsigned int keyRow, unsigned int keyCol, NeotrellisCallback callback);
+
+	private:
+		const unsigned int m_NumStackedRows;
+		const unsigned int m_NumStackedCols;
+		Neotrellis*  m_NeotrellisArr[NEO_TRELLIS_MAX_TILES]; // tiles are stored in row major order
 };
 
 #endif // NEOTRELLIS_HPP
