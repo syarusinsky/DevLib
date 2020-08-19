@@ -40,7 +40,9 @@ class Oled_SH1106
 
 		void begin();
 
-		void displayFullBuffer (uint8_t* buffer);
+		void displayFullRowMajor (uint8_t* buffer);
+
+		void displayPartialRowMajor (uint8_t* buffer, uint8_t startRow, uint8_t startCol, uint8_t endRow, uint8_t endCol);
 
 		void reset();
 

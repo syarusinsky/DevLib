@@ -70,7 +70,7 @@ void Oled_SH1106::begin()
 	this->sendCommand( SH1106_SETDISPLAYON );
 }
 
-void Oled_SH1106::displayFullBuffer (uint8_t* buffer)
+void Oled_SH1106::displayFullRowMajor (uint8_t* buffer)
 {
 	for ( unsigned int page = 0; page < SH1106_NUMPAGES; page++ )
 	{
@@ -84,7 +84,7 @@ void Oled_SH1106::displayFullBuffer (uint8_t* buffer)
 
 		for ( unsigned int column = 0; column < SH1106_LCDWIDTH; column++ )
 		{
-			uint8_t colAdj = column % 8;
+			uint8_t colAdj = 7 - ( column % 8 );
 			unsigned int rowOffset = SH1106_LCDWIDTH / 8;
 
 			uint8_t newByte = 0x0;
@@ -98,6 +98,62 @@ void Oled_SH1106::displayFullBuffer (uint8_t* buffer)
 			newByte |= (( buffer[(column / 8) + pageOffset + (rowOffset * 7)] & (1 << colAdj) ) >> colAdj << 7);
 
 			this->sendData( newByte );
+		}
+	}
+}
+
+void Oled_SH1106::displayPartialRowMajor (uint8_t* buffer, uint8_t startRow, uint8_t startCol, uint8_t endRow, uint8_t endCol)
+{
+	// ensure the partial is within the bounds
+	if ( startRow < SH1106_LCDHEIGHT && startCol < SH1106_LCDWIDTH && endRow < SH1106_LCDHEIGHT && endCol < SH1106_LCDWIDTH )
+	{
+		// ensure we have the right order
+		if ( startRow > endRow )
+		{
+			uint8_t temp = startRow;
+			startRow = endRow;
+			endRow = temp;
+		}
+
+		if ( startCol > endCol )
+		{
+			uint8_t temp = startCol;
+			startCol = endCol;
+			endCol = temp;
+		}
+
+		uint8_t startPage = startRow / 8;
+		uint8_t endPage = ( endRow / 8 ) + 1;
+
+		for ( unsigned int page = startPage; page < endPage; page++ )
+		{
+			uint8_t colAddrLow  = (startCol + 2) & 0x0F; // plus 2 since the first and last 2 columns don't matter
+			uint8_t colAddrHigh = (startCol + 2) >> 4;
+
+			this->sendCommand( SH1106_SETPAGEADDRESS | page );
+			this->sendCommand( SH1106_SETLOWCOLUMN | colAddrLow );
+			this->sendCommand( SH1106_SETHIGHCOLUMN | colAddrHigh );
+			this->sendCommand( SH1106_SETSTARTLINE | 0x0 );
+
+			unsigned int pageOffset = page * SH1106_LCDWIDTH;
+
+			for ( unsigned int column = startCol; column < endCol + 1; column++ )
+			{
+				uint8_t colAdj = 7 - ( column % 8 );
+				unsigned int rowOffset = SH1106_LCDWIDTH / 8;
+
+				uint8_t newByte = 0x0;
+				newByte |= (( buffer[(column / 8) + pageOffset + (rowOffset * 0)] & (1 << colAdj) ) >> colAdj << 0);
+				newByte |= (( buffer[(column / 8) + pageOffset + (rowOffset * 1)] & (1 << colAdj) ) >> colAdj << 1);
+				newByte |= (( buffer[(column / 8) + pageOffset + (rowOffset * 2)] & (1 << colAdj) ) >> colAdj << 2);
+				newByte |= (( buffer[(column / 8) + pageOffset + (rowOffset * 3)] & (1 << colAdj) ) >> colAdj << 3);
+				newByte |= (( buffer[(column / 8) + pageOffset + (rowOffset * 4)] & (1 << colAdj) ) >> colAdj << 4);
+				newByte |= (( buffer[(column / 8) + pageOffset + (rowOffset * 5)] & (1 << colAdj) ) >> colAdj << 5);
+				newByte |= (( buffer[(column / 8) + pageOffset + (rowOffset * 6)] & (1 << colAdj) ) >> colAdj << 6);
+				newByte |= (( buffer[(column / 8) + pageOffset + (rowOffset * 7)] & (1 << colAdj) ) >> colAdj << 7);
+
+				this->sendData( newByte );
+			}
 		}
 	}
 }
