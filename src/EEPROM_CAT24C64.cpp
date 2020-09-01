@@ -61,3 +61,27 @@ uint8_t Eeprom_CAT24C64::readByte (uint16_t address)
 
 	return data;
 }
+
+void Eeprom_CAT24C64::writeToMedia (const Variant& data, const unsigned int sizeInBytes, const unsigned int address)
+{
+	uint8_t* dataArray = reinterpret_cast<uint8_t*>( data.getRaw() );
+
+	for ( unsigned int byte = 0; byte < sizeInBytes; byte++ )
+	{
+		this->writeByte( address + byte, dataArray[byte] );
+	}
+}
+
+Variant Eeprom_CAT24C64::readFromMedia (const unsigned int sizeInBytes, const unsigned int address)
+{
+	uint8_t* data = new uint8_t[sizeInBytes];
+
+	for ( unsigned int byte = 0; byte < sizeInBytes; byte++ )
+	{
+		data[byte] = this->readByte( address + byte );
+	}
+
+	Variant retVal( static_cast<void*>(data) );
+
+	return retVal;
+}

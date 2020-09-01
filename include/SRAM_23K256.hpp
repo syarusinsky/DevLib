@@ -2,8 +2,9 @@
 #define SRAM_23K256_HPP
 
 #include "LLPD.hpp"
+#include "IStorageMedia.hpp"
 
-class Sram_23K256
+class Sram_23K256 : public IStorageMedia
 {
 	public:
 		static const int SRAM_SIZE = 65536;
@@ -13,6 +14,14 @@ class Sram_23K256
 
 		void writeByte (uint16_t address, uint8_t data);
 		uint8_t readByte (uint16_t address);
+
+		void writeToMedia (const Variant& data, const unsigned int sizeInBytes, const unsigned int address) override;
+		// NOTE!!! readFromMedia allocates memory, so be sure to delete it after calling .get<char*>()
+		Variant readFromMedia (const unsigned int sizeInBytes, const unsigned int address) override;
+
+		virtual bool needsInitialization() override { return false; }
+		virtual void initialize() override {}
+		virtual void afterInitialize() override {}
 
 	private:
 		SPI_NUM   m_SpiNum;
