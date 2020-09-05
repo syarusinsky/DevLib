@@ -15,7 +15,10 @@ class Variant
 		~Variant() {}
 
 		template <typename T>
-		T get() const { return *(static_cast<T*>(m_Data)); };
+		T get() const { return *(static_cast<T*>(m_Data)); }
+		template <typename T>
+		T* getPtr() const { return static_cast<T*>(m_Data); }
+
 		void* getRaw() const { return m_Data; };
 
 	private:

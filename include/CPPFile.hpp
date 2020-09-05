@@ -16,6 +16,7 @@ class CPPFile : public IStorageMedia
 		~CPPFile() override;
 
 		void writeToMedia (const Variant& data, const unsigned int sizeInBytes, const unsigned int offsetInBytes) override;
+		// NOTE!!! readFromMedia allocates memory, make sure to delete
 		Variant readFromMedia (const unsigned int sizeInBytes, const unsigned int offsetInBytes) override;
 
 		bool needsInitialization() override;

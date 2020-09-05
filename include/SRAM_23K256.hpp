@@ -16,7 +16,7 @@ class Sram_23K256 : public IStorageMedia
 		uint8_t readByte (uint16_t address);
 
 		void writeToMedia (const Variant& data, const unsigned int sizeInBytes, const unsigned int address) override;
-		// NOTE!!! readFromMedia allocates memory, so be sure to delete it after calling .get<char*>()
+		// NOTE!!! readFromMedia allocates memory, make sure to delete
 		Variant readFromMedia (const unsigned int sizeInBytes, const unsigned int address) override;
 
 		virtual bool needsInitialization() override { return false; }
