@@ -12,21 +12,23 @@
 class CPPFile : public IStorageMedia
 {
 	public:
-		CPPFile(const std::string& fileName);
+		CPPFile (const std::string& fileName, bool hasMBR = false);
 		~CPPFile() override;
 
-		void writeToMedia (const Variant& data, const unsigned int sizeInBytes, const unsigned int offsetInBytes) override;
-		// NOTE!!! readFromMedia allocates memory, make sure to delete
-		Variant readFromMedia (const unsigned int sizeInBytes, const unsigned int offsetInBytes) override;
+		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int offsetInBytes) override;
+		SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int offsetInBytes) override;
 
 		bool needsInitialization() override;
 		void initialize() override;
 		void afterInitialize() override;
 
+		bool hasMBR() override { return m_HasMBR; }
+
 	private:
 		std::fstream m_File;
 		std::string  m_FileName;
 		bool         m_NeedsInitialization;
+		bool 	     m_HasMBR;
 };
 
 #endif // CPPFILE_HPP

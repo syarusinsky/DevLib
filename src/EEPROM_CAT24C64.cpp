@@ -1,8 +1,9 @@
 #include "EEPROM_CAT24C64.hpp"
 
-Eeprom_CAT24C64::Eeprom_CAT24C64 (const I2C_NUM& i2cNum, bool A0IsHigh, bool A1IsHigh, bool A2IsHigh) :
+Eeprom_CAT24C64::Eeprom_CAT24C64 (const I2C_NUM& i2cNum, bool A0IsHigh, bool A1IsHigh, bool A2IsHigh, bool hasMBR) :
 	m_I2CAddress( 0b01010000 ),
-	m_I2CNum( i2cNum )
+	m_I2CNum( i2cNum ),
+	m_HasMBR( hasMBR )
 {
 	if ( A0IsHigh )
 	{
@@ -62,26 +63,25 @@ uint8_t Eeprom_CAT24C64::readByte (uint16_t address)
 	return data;
 }
 
-void Eeprom_CAT24C64::writeToMedia (const Variant& data, const unsigned int sizeInBytes, const unsigned int address)
+void Eeprom_CAT24C64::writeToMedia (const SharedData<uint8_t>& data, const unsigned int address)
 {
-	uint8_t* dataArray = reinterpret_cast<uint8_t*>( data.getRaw() );
+	uint8_t* dataPtr = data.getPtr();
 
 	for ( unsigned int byte = 0; byte < sizeInBytes; byte++ )
 	{
-		this->writeByte( address + byte, dataArray[byte] );
+		this->writeByte( address + byte, dataPtr[byte] );
 	}
 }
 
-Variant Eeprom_CAT24C64::readFromMedia (const unsigned int sizeInBytes, const unsigned int address)
+SharedData<uint8_t> Eeprom_CAT24C64::readFromMedia (const unsigned int sizeInBytes, const unsigned int address)
 {
-	uint8_t* data = new uint8_t[sizeInBytes];
+	SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
+	uint8_t* dataPtr = data.getPtr();
 
 	for ( unsigned int byte = 0; byte < sizeInBytes; byte++ )
 	{
-		data[byte] = this->readByte( address + byte );
+		dataPtr[byte] = this->readByte( address + byte );
 	}
 
-	Variant retVal( static_cast<void*>(data) );
-
-	return retVal;
+	return data;
 }

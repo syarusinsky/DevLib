@@ -1,8 +1,9 @@
 #include "CPPFile.hpp"
 
-CPPFile::CPPFile (const std::string& fileName) :
+CPPFile::CPPFile (const std::string& fileName, bool hasMBR) :
 	m_FileName( fileName ),
-	m_NeedsInitialization( false )
+	m_NeedsInitialization( false ),
+	m_HasMBR( hasMBR )
 {
 	m_File.open( "./" + m_FileName, std::fstream::in | std::fstream::out | std::ios::binary );
 	if ( !m_File.is_open() )
@@ -16,22 +17,20 @@ CPPFile::~CPPFile()
 	m_File.close();
 }
 
-void CPPFile::writeToMedia (const Variant& data, const unsigned int sizeInBytes, const unsigned int offsetInBytes)
+void CPPFile::writeToMedia (const SharedData<uint8_t>& data, const unsigned int offsetInBytes)
 {
 	m_File.seekp( offsetInBytes );
-	m_File.write( reinterpret_cast<char*>(data.getRaw()), sizeInBytes );
+	m_File.write( reinterpret_cast<char*>(data.getPtr()), data.getSizeInBytes() );
 }
 
-Variant CPPFile::readFromMedia (const unsigned int sizeInBytes, const unsigned int offsetInBytes)
+SharedData<uint8_t> CPPFile::readFromMedia (const unsigned int sizeInBytes, const unsigned int offsetInBytes)
 {
-	char* data = new char[sizeInBytes];
+	SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
 
 	m_File.seekg( offsetInBytes );
-	m_File.read( data, sizeInBytes );
+	m_File.read( reinterpret_cast<char*>(data.getPtr()), sizeInBytes );
 
-	Variant retVal( static_cast<void*>(data) );
-
-	return retVal;
+	return data;
 }
 
 bool CPPFile::needsInitialization()

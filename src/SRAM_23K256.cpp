@@ -1,9 +1,10 @@
 #include "SRAM_23K256.hpp"
 
-Sram_23K256::Sram_23K256 (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const GPIO_PIN& csPin) :
+Sram_23K256::Sram_23K256 (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const GPIO_PIN& csPin, bool hasMBR) :
 	m_SpiNum( spiNum ),
 	m_CSPort( csPort ),
-	m_CSPin( csPin )
+	m_CSPin( csPin ),
+	m_HasMBR( hasMBR )
 {
 }
 
@@ -55,26 +56,25 @@ uint8_t Sram_23K256::readByte (uint16_t address)
 	return data;
 }
 
-void Sram_23K256::writeToMedia (const Variant& data, const unsigned int sizeInBytes, const unsigned int address)
+void Sram_23K256::writeToMedia (const SharedData<uint8_t>& data, const unsigned int address)
 {
-	uint8_t* dataArray = reinterpret_cast<uint8_t*>( data.getRaw() );
+	uint8_t* dataPtr = data.getPtr();
 
-	for ( unsigned int byte = 0; byte < sizeInBytes; byte++ )
+	for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
 	{
-		this->writeByte( address + byte, dataArray[byte] );
+		this->writeByte( address + byte, dataPtr[byte] );
 	}
 }
 
-Variant Sram_23K256::readFromMedia (const unsigned int sizeInBytes, const unsigned int address)
+SharedData<uint8_t> Sram_23K256::readFromMedia (const unsigned int sizeInBytes, const unsigned int address)
 {
-	uint8_t* data = new uint8_t[sizeInBytes];
+	SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
+	uint8_t* dataPtr = data.getPtr();
 
 	for ( unsigned int byte = 0; byte < sizeInBytes; byte++ )
 	{
-		data[byte] = this->readByte( address + byte );
+		dataPtr()[byte] = this->readByte( address + byte );
 	}
 
-	Variant retVal( static_cast<void*>(data) );
-
-	return retVal;
+	return data;
 }
