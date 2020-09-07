@@ -67,7 +67,7 @@ void Eeprom_CAT24C64::writeToMedia (const SharedData<uint8_t>& data, const unsig
 {
 	uint8_t* dataPtr = data.getPtr();
 
-	for ( unsigned int byte = 0; byte < sizeInBytes; byte++ )
+	for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
 	{
 		this->writeByte( address + byte, dataPtr[byte] );
 	}
@@ -78,7 +78,7 @@ SharedData<uint8_t> Eeprom_CAT24C64::readFromMedia (const unsigned int sizeInByt
 	SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
 	uint8_t* dataPtr = data.getPtr();
 
-	for ( unsigned int byte = 0; byte < sizeInBytes; byte++ )
+	for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
 	{
 		dataPtr[byte] = this->readByte( address + byte );
 	}

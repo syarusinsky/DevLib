@@ -62,6 +62,11 @@ class SharedData
 
 		unsigned int getSizeInBytes() const { return sizeof(T) * m_Size; }
 
+		T& operator[] (int i)
+		{
+			return this->get( i );
+		}
+
 	private:
 		class Counter
 		{

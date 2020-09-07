@@ -22,11 +22,12 @@ class Eeprom_CAT24C64 : public IStorageMedia
 		virtual void initialize() override {}
 		virtual void afterInitialize() override {}
 
-		virtual void hasMBR() override { return m_HasMBR; }
+		virtual bool hasMBR() override { return m_HasMBR; }
 
 	private:
 		uint8_t m_I2CAddress;
 		I2C_NUM m_I2CNum;
+		bool 	m_HasMBR;
 };
 
 #endif // CAT24C64_EEPROM_HPP

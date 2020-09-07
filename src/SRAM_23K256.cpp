@@ -71,9 +71,9 @@ SharedData<uint8_t> Sram_23K256::readFromMedia (const unsigned int sizeInBytes, 
 	SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
 	uint8_t* dataPtr = data.getPtr();
 
-	for ( unsigned int byte = 0; byte < sizeInBytes; byte++ )
+	for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
 	{
-		dataPtr()[byte] = this->readByte( address + byte );
+		dataPtr[byte] = this->readByte( address + byte );
 	}
 
 	return data;
