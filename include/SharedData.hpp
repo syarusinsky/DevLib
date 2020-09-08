@@ -38,6 +38,11 @@ class SharedData
 			return SharedData( size, new T[size] );
 		}
 
+		static SharedData MakeSharedDataNull()
+		{
+			return SharedData();
+		}
+
 		T& get (unsigned int number = 0)    const
 		{
 			if ( number < m_Size )
@@ -108,6 +113,13 @@ class SharedData
 		SharedData (unsigned int size, T* data) :
 			m_Size( size ),
 			m_Data( data ),
+			m_RefCount( new Counter )
+		{
+		}
+
+		SharedData() :
+			m_Size( 0 ),
+			m_Data( nullptr ),
 			m_RefCount( new Counter )
 		{
 		}
