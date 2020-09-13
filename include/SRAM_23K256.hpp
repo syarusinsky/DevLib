@@ -1,6 +1,12 @@
 #ifndef SRAM_23K256_HPP
 #define SRAM_23K256_HPP
 
+/**************************************************************************
+ * An Sram_23K256 instance is an interface to a Microchip 23K256 256Kb
+ * SPI SRAM. It provides functions to write individual
+ * bytes as well as larger chunks of data.
+**************************************************************************/
+
 #include "LLPD.hpp"
 #include "IStorageMedia.hpp"
 

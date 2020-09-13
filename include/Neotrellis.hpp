@@ -1,6 +1,18 @@
 #ifndef NEOTRELLIS_HPP
 #define NEOTRELLIS_HPP
 
+/**************************************************************************
+ * A Neotrellis instance is an interface to an Adafruit Neotrellis 4x4
+ * I2C board. It provides functions for initializing the board, polling
+ * for button events, setting individual cell colors, and registering
+ * callbacks to be called when polling for events.
+ *
+ * A Multitrellis instance is an interface to multiple tiled Adafruit
+ * Neotrellis 4x4 I2C boards. It is possible to use multiple Neotrellis
+ * instances to get the same functionality, but the Multitrellis class
+ * makes this much easier.
+**************************************************************************/
+
 #include "LLPD.hpp"
 
 #define NEO_TRELLIS_NUM_ROWS 4

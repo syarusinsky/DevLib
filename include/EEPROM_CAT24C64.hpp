@@ -1,6 +1,12 @@
 #ifndef EEPROM_CAT24C64_HPP
 #define EEPROM_CAT24C64_HPP
 
+/**************************************************************************
+ * An Eeprom_CAT24C64 instance is an interface to an ON Semiconductor
+ * CAT24C64 64Kb I2C EEPROM. It provides functions to write individual
+ * bytes as well as larger chunks of data.
+**************************************************************************/
+
 #include "LLPD.hpp"
 #include "IStorageMedia.hpp"
 

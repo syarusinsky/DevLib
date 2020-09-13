@@ -1,6 +1,13 @@
 #ifndef OLED_SH1106_HPP
 #define OLED_SH1106_HPP
 
+/**************************************************************************
+ * A Oled_SH1106 instance is an interface to a Sino Wealth SH1106 128x64
+ * pixel OLED display. It provides functions for initializing the display,
+ * displaying a full frame buffer, displaying a partial frame buffer, and
+ * reseting the display.
+**************************************************************************/
+
 #include "LLPD.hpp"
 
 #define SH1106_LCDBUFFERWIDTH 		132
@@ -45,8 +52,6 @@ class Oled_SH1106
 		void displayPartialRowMajor (uint8_t* buffer, uint8_t startRow, uint8_t startCol, uint8_t endRow, uint8_t endCol);
 
 		void reset();
-
-		void test();
 
 	private:
 		SPI_NUM   m_SpiNum;
