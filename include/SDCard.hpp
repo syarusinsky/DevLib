@@ -22,12 +22,13 @@ class SDCard : public IStorageMedia
 		virtual bool hasMBR() override { return m_HasMBR; }
 
 	private:
-		SPI_NUM   m_SpiNum;
-		GPIO_PORT m_CSPort; // chip select pin port
-		GPIO_PIN  m_CSPin;
-		bool 	  m_HasMBR;
+		SPI_NUM 	m_SpiNum;
+		GPIO_PORT 	m_CSPort; // chip select pin port
+		GPIO_PIN 	m_CSPin;
+		bool 		m_HasMBR;
+		unsigned int 	m_BlockSize;
 
-		struct CommandResult
+		struct R1CommandResult
 		{
 			bool IsInIdleState 	= false;
 			bool EraseReset 	= false;
@@ -38,8 +39,11 @@ class SDCard : public IStorageMedia
 			bool ParameterError 	= false;
 		};
 
-		uint8_t sendCommand (uint8_t commandNum, uint8_t arg1, uint8_t arg2, uint8_t arg3, uint8_t arg4, uint8_t crc);
-		CommandResult interpretCommandResultByte (uint8_t commandResultByte);
+		uint8_t sendCommand (uint8_t commandNum, uint8_t arg1, uint8_t arg2, uint8_t arg3, uint8_t arg4, uint8_t crc = 0xFF);
+		R1CommandResult interpretR1CommandResultByte (uint8_t commandResultByte);
+
+		void setBlockSize (const unsigned int blockSize);
+		unsigned int getBlockSize();
 };
 
 #endif // SDCARD_HPP

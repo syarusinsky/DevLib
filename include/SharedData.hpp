@@ -48,7 +48,7 @@ class SharedData
 			return SharedData();
 		}
 
-		T& get (unsigned int number = 0)    const
+		T& get (unsigned int number = 0) const
 		{
 			if ( number < m_Size )
 			{
@@ -72,7 +72,7 @@ class SharedData
 
 		unsigned int getSizeInBytes() const { return sizeof(T) * m_Size; }
 
-		T& operator[] (int i)
+		T& operator[] (int i) const
 		{
 			return this->get( i );
 		}

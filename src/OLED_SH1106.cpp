@@ -137,7 +137,7 @@ void Oled_SH1106::displayPartialRowMajor (uint8_t* buffer, uint8_t startRow, uin
 
 			unsigned int pageOffset = page * SH1106_LCDWIDTH;
 
-			for ( unsigned int column = startCol; column < endCol + 1; column++ )
+			for ( unsigned int column = startCol; column < static_cast<unsigned int>(endCol + 1); column++ )
 			{
 				uint8_t colAdj = 7 - ( column % 8 );
 				unsigned int rowOffset = SH1106_LCDWIDTH / 8;
