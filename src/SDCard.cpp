@@ -170,7 +170,7 @@ void SDCard::setBlockSize (const unsigned int blockSize)
 	uint8_t bsByte4 = ( blockSize & 0xFF000000 ) >> 24;
 
 	uint8_t resultByte = this->sendCommand( 16, bsByte4, bsByte3, bsByte2, bsByte1 );
-	while ( resultByte != VALID_R1_RESPONSE ) // TODO probably want to do some sort of timeout here instead of a spinlock forever
+	while ( resultByte != VALID_R1_RESPONSE )
 	{
 		resultByte = this->sendCommand( 16, bsByte4, bsByte3, bsByte2, bsByte1 );
 	}
@@ -181,10 +181,8 @@ unsigned int SDCard::getBlockSize()
 	return m_BlockSize;
 }
 
-void SDCard::test()
+void SDCard::initialize()
 {
-	// initialize card
-
 	// first send 80 dummy bytes to get the clock juices flowing
 	LLPD::gpio_output_set( m_CSPort, m_CSPin, false );
 	for ( unsigned int dummyByteNum = 0; dummyByteNum < 80; dummyByteNum++ )
@@ -199,18 +197,20 @@ void SDCard::test()
 
 	// send software reset command (CMD0)
 	resultByte = this->sendCommand( 0, 0, 0, 0, 0, 0x95 );
-	while ( resultByte == 0xFF )
+	result = this->interpretR1CommandResultByte( resultByte );
+	while ( ! result.IsInIdleState )
 	{
 		resultByte = this->sendCommand( 0, 0, 0, 0, 0, 0x95 );
+		result = this->interpretR1CommandResultByte( resultByte );
 	}
-	result = this->interpretR1CommandResultByte( resultByte );
-
-	// ensure the sd card is now in the idle state
-	while ( ! result.IsInIdleState ) {} // TODO instead of a spinlock, initialize function should return a bool indicating success or not
 
 	// send (CMD8) to find out which version the sd card is
 	uint8_t cardVersion = 0;
 	resultByte = this->sendCommand( 8, 0, 0, 0x01, 0xAA, 0x87 );
+	while ( resultByte != 0x01 && resultByte != 0x05 )
+	{
+		resultByte = this->sendCommand( 8, 0, 0, 0x01, 0xAA, 0x87 );
+	}
 	if ( resultByte == 0x01 )
 	{
 		// 4 additional bytes may be sent, so let's just send dummy values -_(o.o)_-
@@ -227,8 +227,6 @@ void SDCard::test()
 	{
 		cardVersion = 1;
 	}
-
-	while ( cardVersion == 0 ) {} // TODO instead of a spinlock, initialize function should return a bool indicating success or not
 
 	// TODO CMD58? Eventually we want should verify the card is working at the correct voltage
 

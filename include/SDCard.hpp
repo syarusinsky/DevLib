@@ -13,10 +13,8 @@ class SDCard : public IStorageMedia
 		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int address) override;
 		SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int address) override;
 
-		void test();
-
 		virtual bool needsInitialization() override { return false; }
-		virtual void initialize() override {}
+		virtual void initialize() override; // this needs to be called before any writing or reading is done
 		virtual void afterInitialize() override {}
 
 		virtual bool hasMBR() override { return m_HasMBR; }
