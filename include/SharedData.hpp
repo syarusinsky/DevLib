@@ -43,6 +43,30 @@ class SharedData
 			return SharedData( size, new T[size] );
 		}
 
+		static SharedData MakeSharedDataFromRange (const SharedData& originalData, unsigned int startIndex, unsigned int endIndex)
+		{
+			if ( startIndex > endIndex )
+			{
+				unsigned int temp = startIndex;
+				startIndex = endIndex;
+				endIndex = temp;
+			}
+			else if ( startIndex == endIndex || startIndex >= originalData.getSize() || endIndex >= originalData.getSize() )
+			{
+				return SharedData::MakeSharedDataNull();
+			}
+
+			unsigned int newSize = ( endIndex - startIndex ) + 1;
+			SharedData data = SharedData::MakeSharedData( newSize );
+
+			for ( unsigned int index = 0; index < data.getSize(); index++ )
+			{
+				data[index] = originalData[startIndex + index];
+			}
+
+			return data;
+		}
+
 		static SharedData MakeSharedDataNull()
 		{
 			return SharedData();
@@ -133,7 +157,7 @@ class SharedData
 		SharedData (unsigned int size, T* data) :
 			m_Size( size ),
 			m_Data( data ),
-			m_RefCount( new Counter )
+			m_RefCount( new Counter() )
 		{
 			(*m_RefCount)++;
 		}
@@ -141,7 +165,7 @@ class SharedData
 		SharedData() :
 			m_Size( 0 ),
 			m_Data( nullptr ),
-			m_RefCount( new Counter )
+			m_RefCount( new Counter() )
 		{
 			(*m_RefCount)++;
 		}
@@ -159,7 +183,7 @@ class SharedData
 						delete[] m_Data;
 					}
 
-					delete   m_RefCount;
+					delete m_RefCount;
 				}
 			}
 		}

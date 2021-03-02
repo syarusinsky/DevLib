@@ -13,7 +13,7 @@ FakeStorageDevice::~FakeStorageDevice()
 
 void FakeStorageDevice::writeToMedia (const SharedData<uint8_t>& data, const unsigned int offsetInBytes)
 {
-	if ( data.getSizeInBytes() + offsetInBytes < m_SizeInBytes ) // if the data fits in this media
+	if ( data.getSizeInBytes() + offsetInBytes <= m_SizeInBytes ) // if the data fits in this media
 	{
 		for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte ++ )
 		{
