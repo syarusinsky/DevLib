@@ -85,3 +85,53 @@ SharedData<uint8_t> Eeprom_CAT24C64::readFromMedia (const unsigned int sizeInByt
 
 	return data;
 }
+
+Eeprom_CAT24C64_Manager::Eeprom_CAT24C64_Manager (const I2C_NUM& i2cNum, const std::vector<Eeprom_CAT24C64_AddressConfig>& addressConfigs) :
+	m_Eeproms()
+{
+	for ( const Eeprom_CAT24C64_AddressConfig& addressConfig : addressConfigs )
+	{
+		m_Eeproms.emplace_back( i2cNum, addressConfig.m_A0IsHigh, addressConfig.m_A1IsHigh, addressConfig.m_A2IsHigh );
+	}
+}
+
+void Eeprom_CAT24C64_Manager::writeByte (unsigned int address, uint8_t data)
+{
+	const unsigned int eepromNum = address / Eeprom_CAT24C64::EEPROM_SIZE;
+	if ( eepromNum >= m_Eeproms.size() ) return;
+	const uint16_t eepromAddress = address % Eeprom_CAT24C64::EEPROM_SIZE;
+
+	m_Eeproms[eepromNum].writeByte( eepromAddress, data );
+}
+
+uint8_t Eeprom_CAT24C64_Manager::readByte (unsigned int address)
+{
+	const unsigned int eepromNum = address / Eeprom_CAT24C64::EEPROM_SIZE;
+	if ( eepromNum >= m_Eeproms.size() ) return 0;
+	const uint16_t eepromAddress = address % Eeprom_CAT24C64::EEPROM_SIZE;
+
+	return m_Eeproms[eepromNum].readByte( eepromAddress );
+}
+
+void Eeprom_CAT24C64_Manager::writeToMedia (const SharedData<uint8_t>& data, const unsigned int address)
+{
+	uint8_t* dataPtr = data.getPtr();
+
+	for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+	{
+		this->writeByte( address + byte, dataPtr[byte] );
+	}
+}
+
+SharedData<uint8_t> Eeprom_CAT24C64_Manager::readFromMedia (const unsigned int sizeInBytes, const unsigned int address)
+{
+	SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
+	uint8_t* dataPtr = data.getPtr();
+
+	for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+	{
+		dataPtr[byte] = this->readByte( address + byte );
+	}
+
+	return data;
+}

@@ -75,6 +75,11 @@ bool Sram_23K256::setSequentialMode (bool sequential)
 	return true;
 }
 
+bool Sram_23K256::getSequentialMode()
+{
+	return m_SequentialMode;
+}
+
 void Sram_23K256::writeByte (uint16_t address, uint8_t data)
 {
 	// pull cs low
@@ -206,5 +211,166 @@ SharedData<uint8_t> Sram_23K256::readFromMedia (const unsigned int sizeInBytes, 
 		}
 
 		return data;
+	}
+}
+
+Sram_23K256_Manager::Sram_23K256_Manager (const SPI_NUM& spiNum, const std::vector<Sram_23K256_GPIO_Config> gpioConfigs) :
+	m_Srams()
+{
+	for ( const Sram_23K256_GPIO_Config& gpioConfig : gpioConfigs )
+	{
+		m_Srams.emplace_back( spiNum, gpioConfig.m_CSPort, gpioConfig.m_CSPin );
+	}
+}
+
+bool Sram_23K256_Manager::setSequentialMode (bool sequential)
+{
+	bool successful = true;
+
+	for ( Sram_23K256& sram : m_Srams )
+	{
+		if ( ! sram.setSequentialMode(sequential) )
+		{
+			successful = false;
+		}
+	}
+
+	return successful;
+}
+
+void Sram_23K256_Manager::writeByte (uint32_t address, uint8_t data)
+{
+	unsigned int sramNum = address / Sram_23K256::SRAM_SIZE;
+	if ( sramNum >= m_Srams.size() ) return; // ensure sram exists
+	unsigned int sramAddress = address % Sram_23K256::SRAM_SIZE;
+
+	m_Srams[sramNum].writeByte( sramAddress, data );
+}
+
+uint8_t Sram_23K256_Manager::readByte (uint32_t address)
+{
+	unsigned int sramNum = address / Sram_23K256::SRAM_SIZE;
+	if ( sramNum >= m_Srams.size() ) return 0; // ensure sram exists
+	unsigned int sramAddress = address % Sram_23K256::SRAM_SIZE;
+
+	return m_Srams[sramNum].readByte( sramAddress );
+}
+
+void Sram_23K256_Manager::writeSequentialBytes (unsigned int startAddress, const SharedData<uint8_t>& data)
+{
+	for ( unsigned int sramNum = 0; sramNum < m_Srams.size(); sramNum++ )
+	{
+		this->writeSequentialBytesHelper( startAddress, data, sramNum );
+	}
+}
+
+SharedData<uint8_t> Sram_23K256_Manager::readSequentialBytes (unsigned int startAddress, unsigned int sizeInBytes)
+{
+	SharedData<uint8_t> retData = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
+
+	for ( unsigned int sramNum = 0; sramNum < m_Srams.size(); sramNum++ )
+	{
+		this->readSequentialBytesHelper( startAddress, retData, sramNum );
+	}
+}
+
+void Sram_23K256_Manager::writeToMedia (const SharedData<uint8_t>& data, const unsigned int address)
+{
+	if ( m_Srams[0].getSequentialMode() )
+	{
+		this->writeSequentialBytes( address, data );
+	}
+	else
+	{
+		uint8_t* dataPtr = data.getPtr();
+
+		for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+		{
+			this->writeByte( address + byte, dataPtr[byte] );
+		}
+	}
+}
+
+SharedData<uint8_t> Sram_23K256_Manager::readFromMedia (const unsigned int sizeInBytes, const unsigned int address)
+{
+	if ( m_Srams[0].getSequentialMode() )
+	{
+		return this->readSequentialBytes( address, sizeInBytes );
+	}
+	else
+	{
+		SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
+		uint8_t* dataPtr = data.getPtr();
+
+		for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+		{
+			dataPtr[byte] = this->readByte( address + byte );
+		}
+
+		return data;
+	}
+}
+
+unsigned int Sram_23K256_Manager::clipStartAddress (unsigned int startAddress, unsigned int sizeInBytes, unsigned int sramNum)
+{
+	const unsigned int sramSize = Sram_23K256::SRAM_SIZE; // just to shorten variable names
+
+	unsigned int retVal = startAddress;
+	if ( startAddress < (sramSize * sramNum) ) { retVal = (sramSize * sramNum); } // this will be a valid index
+	else if ( startAddress >= (sramSize * (sramNum + 1)) ) { retVal = (sramSize * (sramNum + 1)); } // this will not
+
+	return retVal;
+}
+
+unsigned int Sram_23K256_Manager::clipEndAddress (unsigned int endAddress, unsigned int sizeInBytes, unsigned int sramNum)
+{
+	const unsigned int sramSize = Sram_23K256::SRAM_SIZE; // just to shorten variable names
+
+	unsigned int retVal = endAddress;
+	if ( endAddress < (sramSize * sramNum) ) { endAddress = (sramSize * (sramNum + 1)); } // this will be an invalid index
+	else if ( endAddress >= (sramSize * (sramNum + 1)) ) { retVal = (sramSize * (sramNum + 1)) - 1; } // this will not
+
+	return retVal;
+}
+
+void Sram_23K256_Manager::writeSequentialBytesHelper (unsigned int startAddress, const SharedData<uint8_t>& data, unsigned int sramNum)
+{
+	// just to shorten variable names and make things a bit more readable
+	const unsigned int sramSize = Sram_23K256::SRAM_SIZE;
+	const unsigned int sizeInBytes = data.getSizeInBytes();
+	const unsigned int totalEndAddress = startAddress + sizeInBytes - 1;
+
+	const unsigned int sramStart = this->clipStartAddress( startAddress, sizeInBytes, sramNum );
+	const unsigned int sramEnd = this->clipEndAddress( totalEndAddress, sizeInBytes, sramNum );
+
+	// check for invalid indices
+	if ( sramStart != (sramSize * (sramNum + 1)) && sramEnd != (sramSize * (sramNum + 1)) )
+	{
+		SharedData<uint8_t> sramData = SharedData<uint8_t>::MakeSharedDataFromRange( data, sramStart, sramEnd );
+		m_Srams[sramNum].writeSequentialBytes( sramStart, sramData );
+	}
+}
+
+void Sram_23K256_Manager::readSequentialBytesHelper (unsigned int startAddress, SharedData<uint8_t>& data, unsigned int sramNum)
+{
+	// just to shorted variable names and make things a bit more readable
+	const unsigned int sramSize = Sram_23K256::SRAM_SIZE;
+	const unsigned int sizeInBytes = data.getSizeInBytes();
+	const unsigned int totalEndAddress = startAddress + sizeInBytes - 1;
+
+	const unsigned int sramStart = this->clipStartAddress( startAddress, sizeInBytes, sramNum );
+	const unsigned int sramEnd = this->clipEndAddress( totalEndAddress, sizeInBytes, sramNum );
+
+	// check for invalid indices
+	if ( sramStart != (sramSize * (sramNum + 1)) && sramEnd != (sramSize * (sramNum + 1)) )
+	{
+		const unsigned int sramSize = ( sramEnd - sramStart ) + 1;
+		SharedData<uint8_t> sramData = m_Srams[sramNum].readSequentialBytes( sramStart, sramSize );
+
+		// fill the output data with sram bytes
+		for ( unsigned int byte = 0; byte < sramSize; byte++ )
+		{
+			data[sramStart + byte] = sramData[byte];
+		}
 	}
 }

@@ -10,6 +10,8 @@
 #include "LLPD.hpp"
 #include "IStorageMedia.hpp"
 
+#include <vector>
+
 class Eeprom_CAT24C64 : public IStorageMedia
 {
 	public:
@@ -34,6 +36,40 @@ class Eeprom_CAT24C64 : public IStorageMedia
 		uint8_t m_I2CAddress;
 		I2C_NUM m_I2CNum;
 		bool 	m_HasMBR;
+};
+
+struct Eeprom_CAT24C64_AddressConfig
+{
+	bool m_A0IsHigh;
+	bool m_A1IsHigh;
+	bool m_A2IsHigh;
+
+	Eeprom_CAT24C64_AddressConfig (bool A0IsHigh, bool A1IsHigh, bool A2IsHigh) :
+		m_A0IsHigh( A0IsHigh ),
+		m_A1IsHigh( A1IsHigh ),
+		m_A2IsHigh( A2IsHigh ) {}
+};
+
+// a simple class to manage more than one CAT24C64 on the same I2C bus
+class Eeprom_CAT24C64_Manager : public IStorageMedia
+{
+	public:
+		Eeprom_CAT24C64_Manager (const I2C_NUM& i2cNum, const std::vector<Eeprom_CAT24C64_AddressConfig>& addressConfigs);
+
+		void writeByte (unsigned int address, uint8_t data);
+		uint8_t readByte (unsigned int address);
+
+		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int address) override;
+		SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int address) override;
+
+		bool needsInitialization() override { return false; }
+		void initialize() override {}
+		void afterInitialize() override {}
+
+		bool hasMBR() override { return false; }
+
+	private:
+		std::vector<Eeprom_CAT24C64> m_Eeproms;
 };
 
 #endif // CAT24C64_EEPROM_HPP
