@@ -7,6 +7,15 @@ Sram_23K256::Sram_23K256 (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const 
 	m_HasMBR( hasMBR ),
 	m_SequentialMode( false )
 {
+	// these srams seem to write incorrect data for the first couple of cycles, so lets get this over with
+	uint16_t addressToReadAndWriteFrom = 63;
+	uint8_t dataToWrite = 17;
+	uint8_t dataRead = 0;
+	while ( dataRead != dataToWrite )
+	{
+		this->writeByte( addressToReadAndWriteFrom, dataToWrite );
+		dataRead = this->readByte( addressToReadAndWriteFrom );
+	}
 }
 
 Sram_23K256::~Sram_23K256()
@@ -214,7 +223,7 @@ SharedData<uint8_t> Sram_23K256::readFromMedia (const unsigned int sizeInBytes, 
 	}
 }
 
-Sram_23K256_Manager::Sram_23K256_Manager (const SPI_NUM& spiNum, const std::vector<Sram_23K256_GPIO_Config> gpioConfigs) :
+Sram_23K256_Manager::Sram_23K256_Manager (const SPI_NUM& spiNum, const std::vector<Sram_23K256_GPIO_Config>& gpioConfigs) :
 	m_Srams()
 {
 	for ( const Sram_23K256_GPIO_Config& gpioConfig : gpioConfigs )
@@ -253,7 +262,9 @@ uint8_t Sram_23K256_Manager::readByte (uint32_t address)
 	if ( sramNum >= m_Srams.size() ) return 0; // ensure sram exists
 	unsigned int sramAddress = address % Sram_23K256::SRAM_SIZE;
 
-	return m_Srams[sramNum].readByte( sramAddress );
+	uint8_t retVal = m_Srams[sramNum].readByte( sramAddress );
+
+	return retVal;
 }
 
 void Sram_23K256_Manager::writeSequentialBytes (unsigned int startAddress, const SharedData<uint8_t>& data)

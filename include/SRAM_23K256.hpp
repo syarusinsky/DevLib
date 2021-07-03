@@ -64,7 +64,7 @@ struct Sram_23K256_GPIO_Config
 class Sram_23K256_Manager : public IStorageMedia
 {
 	public:
-		Sram_23K256_Manager (const SPI_NUM& spiNum, const std::vector<Sram_23K256_GPIO_Config> gpioConfigs);
+		Sram_23K256_Manager (const SPI_NUM& spiNum, const std::vector<Sram_23K256_GPIO_Config>& gpioConfigs);
 
 		bool setSequentialMode (bool sequential);
 		void writeByte (uint32_t adress, uint8_t data);
