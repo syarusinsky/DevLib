@@ -15,7 +15,7 @@
 class Sram_23K256 : public IStorageMedia
 {
 	public:
-		static const int SRAM_SIZE = 65536;
+		static const int SRAM_SIZE = 32768;
 
 		Sram_23K256 (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const GPIO_PIN& csPin, bool hasMBR = false);
 		~Sram_23K256();
