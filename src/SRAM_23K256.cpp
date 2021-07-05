@@ -228,6 +228,8 @@ Sram_23K256_Manager::Sram_23K256_Manager (const SPI_NUM& spiNum, const std::vect
 {
 	for ( const Sram_23K256_GPIO_Config& gpioConfig : gpioConfigs )
 	{
+		LLPD::gpio_output_setup( gpioConfig.m_CSPort, gpioConfig.m_CSPin, GPIO_PUPD::PULL_UP, GPIO_OUTPUT_TYPE::PUSH_PULL,
+						GPIO_OUTPUT_SPEED::HIGH, false );
 		m_Srams.emplace_back( spiNum, gpioConfig.m_CSPort, gpioConfig.m_CSPin );
 	}
 }
