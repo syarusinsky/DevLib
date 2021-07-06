@@ -11,6 +11,8 @@ template <typename T>
 class SharedData
 {
 	public:
+		static unsigned int m_TotalBytesAllocated;
+
 		SharedData (const SharedData& other)
 		{
 			// if the underlying data is different, we need to first decrease the ref count of the previous data and delete if necessary
@@ -31,15 +33,18 @@ class SharedData
 			{
 				if ( m_Data )
 				{
+					m_TotalBytesAllocated -= ( m_Size * sizeof(T) );
 					delete[] m_Data;
 				}
 
-				delete   m_RefCount;
+				delete m_RefCount;
 			}
 		}
 
 		static SharedData MakeSharedData (unsigned int size)
 		{
+			m_TotalBytesAllocated += ( size * sizeof(T) );
+
 			return SharedData( size, new T[size] );
 		}
 
@@ -70,6 +75,11 @@ class SharedData
 		static SharedData MakeSharedDataNull()
 		{
 			return SharedData();
+		}
+
+		static unsigned int GetTotalAllocatedBytes()
+		{
+			return m_TotalBytesAllocated;
 		}
 
 		T& get (unsigned int number = 0) const
@@ -180,6 +190,7 @@ class SharedData
 				{
 					if ( m_Data )
 					{
+						m_TotalBytesAllocated -= ( m_Size * sizeof(T) );
 						delete[] m_Data;
 					}
 
@@ -188,5 +199,8 @@ class SharedData
 			}
 		}
 };
+
+template <typename T>
+unsigned int SharedData<T>::m_TotalBytesAllocated = 0;
 
 #endif // SHAREDDATA_HPP

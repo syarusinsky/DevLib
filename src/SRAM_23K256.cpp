@@ -271,20 +271,24 @@ uint8_t Sram_23K256_Manager::readByte (uint32_t address)
 
 void Sram_23K256_Manager::writeSequentialBytes (unsigned int startAddress, const SharedData<uint8_t>& data)
 {
+	unsigned int dataIndex = 0;
 	for ( unsigned int sramNum = 0; sramNum < m_Srams.size(); sramNum++ )
 	{
-		this->writeSequentialBytesHelper( startAddress, data, sramNum );
+		this->writeSequentialBytesHelper( startAddress, data, sramNum, dataIndex );
 	}
 }
 
 SharedData<uint8_t> Sram_23K256_Manager::readSequentialBytes (unsigned int startAddress, unsigned int sizeInBytes)
 {
 	SharedData<uint8_t> retData = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
+	unsigned int retDataIndex = 0;
 
 	for ( unsigned int sramNum = 0; sramNum < m_Srams.size(); sramNum++ )
 	{
-		this->readSequentialBytesHelper( startAddress, retData, sramNum );
+		this->readSequentialBytesHelper( startAddress, retData, sramNum, retDataIndex );
 	}
+
+	return retData;
 }
 
 void Sram_23K256_Manager::writeToMedia (const SharedData<uint8_t>& data, const unsigned int address)
@@ -340,13 +344,14 @@ unsigned int Sram_23K256_Manager::clipEndAddress (unsigned int endAddress, unsig
 	const unsigned int sramSize = Sram_23K256::SRAM_SIZE; // just to shorten variable names
 
 	unsigned int retVal = endAddress;
-	if ( endAddress < (sramSize * sramNum) ) { endAddress = (sramSize * (sramNum + 1)); } // this will be an invalid index
+	if ( endAddress < (sramSize * sramNum) ) { retVal = (sramSize * (sramNum + 1)); } // this will be an invalid index
 	else if ( endAddress >= (sramSize * (sramNum + 1)) ) { retVal = (sramSize * (sramNum + 1)) - 1; } // this will not
 
 	return retVal;
 }
 
-void Sram_23K256_Manager::writeSequentialBytesHelper (unsigned int startAddress, const SharedData<uint8_t>& data, unsigned int sramNum)
+void Sram_23K256_Manager::writeSequentialBytesHelper (unsigned int startAddress, const SharedData<uint8_t>& data, unsigned int sramNum,
+							unsigned int& dataIndex)
 {
 	// just to shorten variable names and make things a bit more readable
 	const unsigned int sramSize = Sram_23K256::SRAM_SIZE;
@@ -359,12 +364,15 @@ void Sram_23K256_Manager::writeSequentialBytesHelper (unsigned int startAddress,
 	// check for invalid indices
 	if ( sramStart != (sramSize * (sramNum + 1)) && sramEnd != (sramSize * (sramNum + 1)) )
 	{
-		SharedData<uint8_t> sramData = SharedData<uint8_t>::MakeSharedDataFromRange( data, sramStart, sramEnd );
-		m_Srams[sramNum].writeSequentialBytes( sramStart, sramData );
+		const unsigned int sizeToWrite = ( sramEnd - sramStart ) + 1;
+		SharedData<uint8_t> dataFragment = SharedData<uint8_t>::MakeSharedDataFromRange( data, dataIndex, dataIndex + sizeToWrite - 1 );
+		m_Srams[sramNum].writeSequentialBytes( sramStart, dataFragment );
+		dataIndex += sizeToWrite;
 	}
 }
 
-void Sram_23K256_Manager::readSequentialBytesHelper (unsigned int startAddress, SharedData<uint8_t>& data, unsigned int sramNum)
+void Sram_23K256_Manager::readSequentialBytesHelper (unsigned int startAddress, SharedData<uint8_t>& data, unsigned int sramNum,
+							unsigned int& dataIndex)
 {
 	// just to shorted variable names and make things a bit more readable
 	const unsigned int sramSize = Sram_23K256::SRAM_SIZE;
@@ -377,13 +385,15 @@ void Sram_23K256_Manager::readSequentialBytesHelper (unsigned int startAddress, 
 	// check for invalid indices
 	if ( sramStart != (sramSize * (sramNum + 1)) && sramEnd != (sramSize * (sramNum + 1)) )
 	{
-		const unsigned int sramSize = ( sramEnd - sramStart ) + 1;
-		SharedData<uint8_t> sramData = m_Srams[sramNum].readSequentialBytes( sramStart, sramSize );
+		const unsigned int sizeToRead = ( sramEnd - sramStart ) + 1;
+		SharedData<uint8_t> sramData = m_Srams[sramNum].readSequentialBytes( sramStart, sizeToRead );
+		uint8_t* dataPtr = data.getPtr();
 
 		// fill the output data with sram bytes
-		for ( unsigned int byte = 0; byte < sramSize; byte++ )
+		for ( unsigned int byte = 0; byte < sizeToRead; byte++ )
 		{
-			data[sramStart + byte] = sramData[byte];
+			dataPtr[dataIndex] = sramData[byte];
+			dataIndex++;
 		}
 	}
 }

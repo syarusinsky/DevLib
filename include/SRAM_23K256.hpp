@@ -86,8 +86,10 @@ class Sram_23K256_Manager : public IStorageMedia
 
 		unsigned int clipStartAddress (unsigned int startAddress, unsigned int sizeInBytes, unsigned int sramNum);
 		unsigned int clipEndAddress (unsigned int endAddress, unsigned int sizeInBytes, unsigned int sramNum);
-		void writeSequentialBytesHelper (unsigned int startAddress, const SharedData<uint8_t>& data, unsigned int sramNum);
-		void readSequentialBytesHelper (unsigned int startAddress, SharedData<uint8_t>& data, unsigned int sramNum);
+		void writeSequentialBytesHelper (unsigned int startAddress, const SharedData<uint8_t>& data, unsigned int sramNum,
+						unsigned int& dataIndex);
+		void readSequentialBytesHelper (unsigned int startAddress, SharedData<uint8_t>& data, unsigned int sramNum,
+						unsigned int& dataIndex);
 };
 
 #endif // SRAM_23K256_HPP
