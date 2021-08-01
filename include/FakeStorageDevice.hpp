@@ -14,6 +14,9 @@ class FakeStorageDevice : public IStorageMedia
 		FakeStorageDevice (const unsigned int deviceSizeInBytes);
 		~FakeStorageDevice() override;
 
+		void writeByte (uint16_t address, uint8_t data);
+		uint8_t readByte (uint16_t address);
+
 		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int offsetInBytes) override;
 		SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int offsetInBytes) override;
 

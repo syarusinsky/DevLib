@@ -11,6 +11,16 @@ FakeStorageDevice::~FakeStorageDevice()
 	delete[] m_DataArray;
 }
 
+void FakeStorageDevice::writeByte (uint16_t address, uint8_t data)
+{
+	m_DataArray[address] = data;
+}
+
+uint8_t FakeStorageDevice::readByte (uint16_t address)
+{
+	return m_DataArray[address];
+}
+
 void FakeStorageDevice::writeToMedia (const SharedData<uint8_t>& data, const unsigned int offsetInBytes)
 {
 	if ( data.getSizeInBytes() + offsetInBytes <= m_SizeInBytes ) // if the data fits in this media
