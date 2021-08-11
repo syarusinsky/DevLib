@@ -38,6 +38,26 @@
 #define SH1106_SETCOMSCANINC 		0xC0
 #define SH1106_SETCOMSCANDEC 		0xC8
 
+enum class REFRESH_RATE_PRESCALE : unsigned int
+{
+	BY_1 = 0,
+	BY_2,
+	BY_3,
+	BY_4,
+	BY_5,
+	BY_6,
+	BY_7,
+	BY_8,
+	BY_9,
+	BY_10,
+	BY_11,
+	BY_12,
+	BY_13,
+	BY_14,
+	BY_15,
+	BY_16
+};
+
 class Oled_SH1106
 {
 	public:
@@ -50,6 +70,8 @@ class Oled_SH1106
 		void displayFullRowMajor (uint8_t* buffer);
 
 		void displayPartialRowMajor (uint8_t* buffer, uint8_t startRow, uint8_t startCol, uint8_t endRow, uint8_t endCol);
+
+		void setRefreshRatePrescaler (const REFRESH_RATE_PRESCALE& presc);
 
 		void reset();
 

@@ -24,12 +24,11 @@ void Oled_SH1106::begin()
 	this->sendCommand( SH1106_SETDISPLAYOFF );
 
 	// set the clock prescaler
-	this->sendCommand( SH1106_SETDISPLAYCLOCKDIV );
-	this->sendCommand( 0x80 ); // TODO this may need to be tweaked
+	this->setRefreshRatePrescaler( REFRESH_RATE_PRESCALE::BY_1 );
 
 	// set multiplex ration mode
 	this->sendCommand( SH1106_SETMULTIPLEX );
-	this->sendCommand( 0x3F ); // TODO this may need to be tweaked
+	this->sendCommand( 0x3F );
 
 	// set diplay offset
 	this->sendCommand( SH1106_SETDISPLAYOFFSET );
@@ -50,11 +49,11 @@ void Oled_SH1106::begin()
 
 	// set the contrast
 	this->sendCommand( SH1106_SETCONTRAST );
-	this->sendCommand( 0xCF ); // TODO this may need to be tweaked
+	this->sendCommand( 0xCF );
 
 	// set the charge/discharge periods for the charge pump
 	this->sendCommand( SH1106_SETPRECHARGE );
-	this->sendCommand( 0xF1 ); // TODO this may need to be tweaked
+	this->sendCommand( 0xFF );
 
 	// set the common pad output voltage level at the deselect stage
 	this->sendCommand( SH1106_SETVCOMDETECT );
@@ -156,6 +155,17 @@ void Oled_SH1106::displayPartialRowMajor (uint8_t* buffer, uint8_t startRow, uin
 			}
 		}
 	}
+}
+
+void Oled_SH1106::setRefreshRatePrescaler (const REFRESH_RATE_PRESCALE& presc)
+{
+	unsigned int prescInt = static_cast<unsigned int>( presc );
+
+	uint8_t refreshRateData = 0x00 | prescInt;
+
+	// set the clock prescaler
+	this->sendCommand( SH1106_SETDISPLAYCLOCKDIV );
+	this->sendCommand( refreshRateData );
 }
 
 void Oled_SH1106::reset()
