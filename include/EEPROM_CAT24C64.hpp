@@ -62,13 +62,13 @@ class Eeprom_CAT24C64_Manager : public IStorageMedia
 		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int address) override;
 		SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int address) override;
 
-		bool needsInitialization() override { return false; }
-		void initialize() override {}
-		void afterInitialize() override {}
+		virtual bool needsInitialization() override { return false; }
+		virtual void initialize() override {}
+		virtual void afterInitialize() override {}
 
 		bool hasMBR() override { return false; }
 
-	private:
+	protected:
 		std::vector<Eeprom_CAT24C64> m_Eeproms;
 };
 
