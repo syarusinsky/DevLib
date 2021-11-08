@@ -13,6 +13,9 @@ class SDCard : public IStorageMedia
 		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int address) override;
 		SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int address) override;
 
+		bool writeSingleBlock (const SharedData<uint8_t>& data, const unsigned int blockNum); // returns false if write failed
+		SharedData<uint8_t> readSingleBlock (const unsigned int blockNum);
+
 		virtual bool needsInitialization() override { return false; }
 		virtual void initialize() override; // this needs to be called before any writing or reading is done
 		virtual void afterInitialize() override {}
@@ -38,6 +41,7 @@ class SDCard : public IStorageMedia
 		};
 
 		uint8_t sendCommand (uint8_t commandNum, uint8_t arg1, uint8_t arg2, uint8_t arg3, uint8_t arg4, uint8_t crc = 0xFF);
+		bool isVersion2Card();
 		R1CommandResult interpretR1CommandResultByte (uint8_t commandResultByte);
 
 		void setBlockSize (const unsigned int blockSize);
