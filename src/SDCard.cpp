@@ -24,8 +24,16 @@ void SDCard::writeToMedia (const SharedData<uint8_t>& data, const unsigned int a
 	unsigned int startBlock = address / m_BlockSize;
 	unsigned int endBlock = ( address + dataSize - 1 ) / m_BlockSize;
 
+	// no need to read a block if we're writing an entire single block, note: this only speeds things up for writing single blocks
+	if ( (dataSize % m_BlockSize == 0) && (startBlock == endBlock) )
+	{
+		this->writeSingleBlock( data, startBlock );
+
+		return;
+	}
+
 	// get the number of bytes we'll need to keep from the beginning of the first block
-	unsigned int bytesToSkip = ( address % m_BlockSize ) - 1;
+	unsigned int bytesToSkip = address % m_BlockSize;
 
 	unsigned int bytesSkipped = 0;
 	unsigned int bytesWritten = 0;
@@ -42,7 +50,7 @@ void SDCard::writeToMedia (const SharedData<uint8_t>& data, const unsigned int a
 			{
 				break;
 			}
-			else if ( bytesSkipped > bytesToSkip )
+			else if ( bytesSkipped == bytesToSkip )
 			{
 				blockToWrite[byte] = data[bytesWritten];
 				bytesWritten++;
@@ -65,7 +73,7 @@ SharedData<uint8_t> SDCard::readFromMedia (const unsigned int sizeInBytes, const
 	unsigned int endBlock = ( address + sizeInBytes - 1 ) / m_BlockSize;
 
 	// get the number of bytes we'll need to skip from the beginning of the first block
-	unsigned int bytesToSkip = ( address % m_BlockSize ) - 1;
+	unsigned int bytesToSkip = address % m_BlockSize;
 
 	unsigned int bytesSkipped = 0;
 	unsigned int bytesRead = 0;
@@ -82,7 +90,7 @@ SharedData<uint8_t> SDCard::readFromMedia (const unsigned int sizeInBytes, const
 				// we've finished reading
 				break;
 			}
-			else if ( bytesSkipped > bytesToSkip )
+			else if ( bytesSkipped == bytesToSkip )
 			{
 				dataToRead[bytesRead] = blockData[byte];
 				bytesRead++;
@@ -354,10 +362,10 @@ bool SDCard::writeSingleBlock (const SharedData<uint8_t>& data, const unsigned i
 	if ( data.getSize() != m_BlockSize ) return false;
 
 	// break block address into individual bytes
-	uint8_t baByte1 = blockNum & 0xFF;
-	uint8_t baByte2 = ( blockNum & 0xFF00     ) >> 8;
-	uint8_t baByte3 = ( blockNum & 0xFF0000   ) >> 16;
-	uint8_t baByte4 = ( blockNum & 0xFF000000 ) >> 24;
+	uint8_t baByte4 = blockNum & 0xFF;
+	uint8_t baByte3 = ( blockNum & 0xFF00     ) >> 8;
+	uint8_t baByte2 = ( blockNum & 0xFF0000   ) >> 16;
+	uint8_t baByte1 = ( blockNum & 0xFF000000 ) >> 24;
 
 	// start single block write with CMD24
 	uint8_t resultByte = this->sendCommand( 24, baByte1, baByte2, baByte3, baByte4 );
@@ -406,10 +414,10 @@ SharedData<uint8_t> SDCard::readSingleBlock (const unsigned int blockNum)
 	SharedData<uint8_t> readBlockData = SharedData<uint8_t>::MakeSharedData( m_BlockSize );
 
 	// break block address into individual bytes
-	uint8_t baByte1 = blockNum & 0xFF;
-	uint8_t baByte2 = ( blockNum & 0xFF00     ) >> 8;
-	uint8_t baByte3 = ( blockNum & 0xFF0000   ) >> 16;
-	uint8_t baByte4 = ( blockNum & 0xFF000000 ) >> 24;
+	uint8_t baByte4 = blockNum & 0xFF;
+	uint8_t baByte3 = ( blockNum & 0xFF00     ) >> 8;
+	uint8_t baByte2 = ( blockNum & 0xFF0000   ) >> 16;
+	uint8_t baByte1 = ( blockNum & 0xFF000000 ) >> 24;
 
 	// start single block read with CMD17
 	uint8_t resultByte = this->sendCommand( 17, baByte1, baByte2, baByte3, baByte4 );
