@@ -406,6 +406,10 @@ bool SDCard::writeSingleBlock (const SharedData<uint8_t>& data, const unsigned i
 	// the full block is transferred, so we can bring cs pin high
 	LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
 
+	// send two dummy bytes (at least one is required, but we'll be safe)
+	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+
 	return true;
 }
 

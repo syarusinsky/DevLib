@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <set>
+#include <type_traits>
 
 struct IAllocatorUsedBlock
 {
@@ -26,6 +27,7 @@ class IAllocator
 		IAllocator (uint8_t* startPtr, unsigned int sizeInBytes);
 		~IAllocator();
 
+		// should only be used with single instances of types, use allocatePrimativeArray for arrays of primative types
 		template <typename T, typename... A>
 		T* allocate(A... constructorArgs)
 		{
@@ -52,6 +54,43 @@ class IAllocator
 						m_UsedBlocks.insert( newBlock );
 
 						return new ( startPtr ) T( constructorArgs... );
+					}
+				}
+			}
+
+			return nullptr;
+		}
+
+		// this doesn't zero out the memory
+		template <typename T>
+		T* allocatePrimativeArray (unsigned int numElements)
+		{
+			if ( std::is_fundamental<T>::value )
+			{
+				const unsigned int totalSize = sizeof( T ) * numElements;
+
+				// look for size in between two blocks that fits totalSize
+				for ( auto usedBlockIt = m_UsedBlocks.begin(); usedBlockIt != m_UsedBlocks.end(); usedBlockIt++ )
+				{
+					const IAllocatorUsedBlock& usedBlock = *usedBlockIt;
+					const auto nextUsedBlockIt = std::next( usedBlockIt );
+					if ( nextUsedBlockIt != m_UsedBlocks.end() )
+					{
+						const uint8_t* const nextUsedBlockStartPtr = nextUsedBlockIt->m_StartPtr;
+						const unsigned int spaceBetween = nextUsedBlockStartPtr
+											- ( usedBlock.m_StartPtr + usedBlock.m_SizeInBytes );
+
+						// if the data fits in the space between these blocks place it there, add a new used block to the list,
+						// and return the pointer
+						if ( spaceBetween >= totalSize )
+						{
+							uint8_t* const startPtr = usedBlock.m_StartPtr + usedBlock.m_SizeInBytes;
+							IAllocatorUsedBlock newBlock( startPtr, totalSize );
+
+							m_UsedBlocks.insert( newBlock );
+
+							return reinterpret_cast<T*>( startPtr );
+						}
 					}
 				}
 			}
