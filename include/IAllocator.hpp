@@ -39,7 +39,8 @@ class IAllocator
 				if ( nextUsedBlockIt != m_UsedBlocks.end() )
 				{
 					const uint8_t* const nextUsedBlockStartPtr = nextUsedBlockIt->m_StartPtr;
-					const unsigned int spaceBetween = nextUsedBlockStartPtr - usedBlock.m_StartPtr + usedBlock.m_SizeInBytes;
+					const unsigned int spaceBetween = nextUsedBlockStartPtr
+										- ( usedBlock.m_StartPtr + usedBlock.m_SizeInBytes );
 
 					// if the data fits in the space between these blocks place it there, add a new used block to the list,
 					// and return the pointer
@@ -64,7 +65,7 @@ class IAllocator
 			const uint8_t* const dataToFreeUIntPtr = reinterpret_cast<const uint8_t* const>( dataToFreePtr );
 
 			// ensure we don't remove our first and last block added in constructor for comparison
-			if ( dataToFreePtr != m_StartPtr && dataToFreePtr != m_StartPtr + m_SizeInBytes )
+			if ( dataToFreeUIntPtr != m_StartPtr && dataToFreeUIntPtr != m_StartPtr + m_SizeInBytes )
 			{
 				// find the used block that this data points to
 				for ( auto usedBlockIt = m_UsedBlocks.begin(); usedBlockIt != m_UsedBlocks.end(); usedBlockIt++ )

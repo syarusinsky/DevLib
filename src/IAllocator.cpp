@@ -12,9 +12,25 @@ IAllocatorUsedBlock::~IAllocatorUsedBlock()
 
 bool IAllocatorUsedBlock::operator< (const IAllocatorUsedBlock& other) const
 {
-	if ( m_StartPtr < other.m_StartPtr ) return true;
-
-	return false;
+	if ( m_StartPtr == other.m_StartPtr )
+	{
+		if ( m_SizeInBytes < other.m_SizeInBytes )
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else if ( m_StartPtr < other.m_StartPtr )
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 IAllocator::IAllocator (uint8_t* startPtr, unsigned int sizeInBytes) :
