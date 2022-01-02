@@ -113,6 +113,8 @@ class IAllocator
 					if ( dataToFreeUIntPtr == usedBlockIt->m_StartPtr )
 					{
 						m_UsedBlocks.erase( usedBlockIt );
+						dataToFreePtr = nullptr;
+
 						return true;
 					}
 				}

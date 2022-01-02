@@ -24,8 +24,6 @@ class FakeStorageDevice : public IStorageMedia
 		void initialize() override {}
 		void afterInitialize() override {}
 
-		bool hasMBR() override { return false; }
-
 	private:
 		unsigned int 	m_SizeInBytes;
 		uint8_t* 	m_DataArray;

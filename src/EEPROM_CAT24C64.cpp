@@ -1,9 +1,8 @@
 #include "EEPROM_CAT24C64.hpp"
 
-Eeprom_CAT24C64::Eeprom_CAT24C64 (const I2C_NUM& i2cNum, bool A0IsHigh, bool A1IsHigh, bool A2IsHigh, bool hasMBR) :
+Eeprom_CAT24C64::Eeprom_CAT24C64 (const I2C_NUM& i2cNum, bool A0IsHigh, bool A1IsHigh, bool A2IsHigh) :
 	m_I2CAddress( 0b01010000 ),
-	m_I2CNum( i2cNum ),
-	m_HasMBR( hasMBR )
+	m_I2CNum( i2cNum )
 {
 	if ( A0IsHigh )
 	{

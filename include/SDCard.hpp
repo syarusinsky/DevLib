@@ -7,7 +7,7 @@
 class SDCard : public IStorageMedia
 {
 	public:
-		SDCard (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const GPIO_PIN& csPin, bool hasMBR = true);
+		SDCard (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const GPIO_PIN& csPin);
 		~SDCard();
 
 		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int address) override;
@@ -20,14 +20,13 @@ class SDCard : public IStorageMedia
 		virtual void initialize() override; // this needs to be called before any writing or reading is done
 		virtual void afterInitialize() override {}
 
-		virtual bool hasMBR() override { return m_HasMBR; }
-
 	private:
 		SPI_NUM 	m_SpiNum;
 		GPIO_PORT 	m_CSPort; // chip select pin port
 		GPIO_PIN 	m_CSPin;
-		bool 		m_HasMBR;
 		unsigned int 	m_BlockSize;
+		bool 		m_UsingBlockAddressing; // true for block addressing, otherwise using byte addressing
+		unsigned int 	m_ByteAddressingMultiplier; // 1 for block addressing, otherwise block size
 
 		struct R1CommandResult
 		{
@@ -46,6 +45,8 @@ class SDCard : public IStorageMedia
 
 		void setBlockSize (const unsigned int blockSize);
 		unsigned int getBlockSize();
+
+		SharedData<uint8_t> readOCR();
 };
 
 #endif // SDCARD_HPP

@@ -22,7 +22,14 @@ class IStorageMedia
 		virtual void initialize() = 0;
 		virtual void afterInitialize() = 0;
 
-		virtual bool hasMBR() { return false; }
+		bool hasMBR()
+		{
+			SharedData<uint8_t> mbrSignature = this->readFromMedia( 2, 0x1FE );
+
+			if ( mbrSignature[0] == 0x55 && mbrSignature[1] == 0xAA ) return true;
+
+			return false;
+		}
 };
 
 #endif // ISTORAGEMEDIA_HPP

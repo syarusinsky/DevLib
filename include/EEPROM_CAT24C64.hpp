@@ -17,7 +17,7 @@ class Eeprom_CAT24C64 : public IStorageMedia
 	public:
 		static const int EEPROM_SIZE = 8192;
 
-		Eeprom_CAT24C64 (const I2C_NUM& i2cNum, bool A0IsHigh = false, bool A1IsHigh = false, bool A2IsHigh = false, bool hasMBR = false);
+		Eeprom_CAT24C64 (const I2C_NUM& i2cNum, bool A0IsHigh = false, bool A1IsHigh = false, bool A2IsHigh = false);
 		~Eeprom_CAT24C64() override;
 
 		void writeByte (uint16_t address, uint8_t data);
@@ -30,12 +30,9 @@ class Eeprom_CAT24C64 : public IStorageMedia
 		virtual void initialize() override {}
 		virtual void afterInitialize() override {}
 
-		virtual bool hasMBR() override { return m_HasMBR; }
-
 	private:
 		uint8_t m_I2CAddress;
 		I2C_NUM m_I2CNum;
-		bool 	m_HasMBR;
 };
 
 struct Eeprom_CAT24C64_AddressConfig
@@ -65,8 +62,6 @@ class Eeprom_CAT24C64_Manager : public IStorageMedia
 		virtual bool needsInitialization() override { return false; }
 		virtual void initialize() override {}
 		virtual void afterInitialize() override {}
-
-		bool hasMBR() override { return false; }
 
 	protected:
 		std::vector<Eeprom_CAT24C64> m_Eeproms;

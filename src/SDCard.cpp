@@ -4,12 +4,13 @@
 
 #define VALID_R1_RESPONSE 0x00
 
-SDCard::SDCard (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const GPIO_PIN& csPin, bool hasMBR) :
+SDCard::SDCard (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const GPIO_PIN& csPin) :
 	m_SpiNum( spiNum ),
 	m_CSPort( csPort ),
 	m_CSPin( csPin ),
-	m_HasMBR( hasMBR ),
-	m_BlockSize( 512 )
+	m_BlockSize( 512 ),
+	m_UsingBlockAddressing( false ),
+	m_ByteAddressingMultiplier( 1 )
 {
 }
 
@@ -110,6 +111,8 @@ void SDCard::setBlockSize (const unsigned int blockSize)
 {
 	m_BlockSize = blockSize;
 
+	m_ByteAddressingMultiplier = ( m_UsingBlockAddressing ) ? 1 : m_BlockSize;
+
 	// break block size into individual bytes
 	uint8_t bsByte1 = blockSize & 0xFF;
 	uint8_t bsByte2 = ( blockSize & 0xFF00     ) >> 8;
@@ -166,8 +169,6 @@ void SDCard::initialize()
 
 	LLPD::tim6_delay( 10000 );
 
-	// TODO CMD58? Eventually we want should verify the card is working at the correct voltage
-
 	if ( cardVersion2 )
 	{
 		// ensure the card is out of the idle state (ACMD41)
@@ -181,6 +182,18 @@ void SDCard::initialize()
 			attempts--;
 			LLPD::tim6_delay( 10000 );
 		}
+
+		// try (CMD1) if (ACMD41) fails
+		if ( attempts == 0 )
+		{
+			// ensure the card is out of the idle state (CMD1)
+			resultByte = this->sendCommand( 1, 0, 0, 0, 0, 0xF9 );
+			while ( resultByte != VALID_R1_RESPONSE )
+			{
+				resultByte = this->sendCommand( 1, 0, 0, 0, 0, 0xF9 );
+				LLPD::tim6_delay( 10000 );
+			}
+		}
 	}
 	else
 	{
@@ -192,6 +205,10 @@ void SDCard::initialize()
 			LLPD::tim6_delay( 10000 );
 		}
 	}
+
+	// CMD58 so that we can determine if we have high-capacity card and need byte addressing, or block addressing
+	SharedData<uint8_t> ocr = this->readOCR();
+	m_UsingBlockAddressing = ocr[0] & 0b01000000;
 
 	// set initial block size to 512
 	this->setBlockSize( 512 );
@@ -358,14 +375,17 @@ SDCard::R1CommandResult SDCard::interpretR1CommandResultByte (uint8_t commandRes
 
 bool SDCard::writeSingleBlock (const SharedData<uint8_t>& data, const unsigned int blockNum)
 {
+	// if byte addressing, we need to multiply by the block size
+	const unsigned int address = blockNum * m_ByteAddressingMultiplier;
+
 	// unsure the data is block sized
 	if ( data.getSize() != m_BlockSize ) return false;
 
 	// break block address into individual bytes
-	uint8_t baByte4 = blockNum & 0xFF;
-	uint8_t baByte3 = ( blockNum & 0xFF00     ) >> 8;
-	uint8_t baByte2 = ( blockNum & 0xFF0000   ) >> 16;
-	uint8_t baByte1 = ( blockNum & 0xFF000000 ) >> 24;
+	uint8_t baByte1 = address & 0xFF;
+	uint8_t baByte2 = ( address & 0xFF00     ) >> 8;
+	uint8_t baByte3 = ( address & 0xFF0000   ) >> 16;
+	uint8_t baByte4 = ( address & 0xFF000000 ) >> 24;
 
 	// start single block write with CMD24
 	uint8_t resultByte = this->sendCommand( 24, baByte1, baByte2, baByte3, baByte4 );
@@ -413,15 +433,18 @@ bool SDCard::writeSingleBlock (const SharedData<uint8_t>& data, const unsigned i
 	return true;
 }
 
-SharedData<uint8_t> SDCard::readSingleBlock (const unsigned int blockNum)
+SharedData<uint8_t> SDCard::readSingleBlock (unsigned int blockNum)
 {
+	// if byte addressing, we need to multiply by the block size
+	const unsigned int address = blockNum * m_ByteAddressingMultiplier;
+
 	SharedData<uint8_t> readBlockData = SharedData<uint8_t>::MakeSharedData( m_BlockSize );
 
 	// break block address into individual bytes
-	uint8_t baByte4 = blockNum & 0xFF;
-	uint8_t baByte3 = ( blockNum & 0xFF00     ) >> 8;
-	uint8_t baByte2 = ( blockNum & 0xFF0000   ) >> 16;
-	uint8_t baByte1 = ( blockNum & 0xFF000000 ) >> 24;
+	uint8_t baByte1 = address & 0xFF;
+	uint8_t baByte2 = ( address & 0xFF00     ) >> 8;
+	uint8_t baByte3 = ( address & 0xFF0000   ) >> 16;
+	uint8_t baByte4 = ( address & 0xFF000000 ) >> 24;
 
 	// start single block read with CMD17
 	uint8_t resultByte = this->sendCommand( 17, baByte1, baByte2, baByte3, baByte4 );
@@ -454,4 +477,36 @@ SharedData<uint8_t> SDCard::readSingleBlock (const unsigned int blockNum)
 	LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
 
 	return readBlockData;
+}
+
+SharedData<uint8_t> SDCard::readOCR()
+{
+	constexpr unsigned int ocrSize = sizeof( uint32_t );
+
+	SharedData<uint8_t> ocrContents = SharedData<uint8_t>::MakeSharedData( ocrSize );
+
+	// start ocr read with CMD58
+	uint8_t resultByte = this->sendCommand( 58, 0, 0, 0, 0, 0x00 );
+	while ( resultByte != VALID_R1_RESPONSE )
+	{
+		resultByte = this->sendCommand( 58, 0, 0, 0, 0, 0x00 );
+	}
+
+	// we're about to begin the ocr transfer, so bring cs pin low
+	LLPD::gpio_output_set( m_CSPort, m_CSPin, false );
+
+	// read data into buffer
+	for ( unsigned int byte = 0; byte < ocrSize; byte++ )
+	{
+		ocrContents[byte] = LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+	}
+
+	// send two dummy bytes
+	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+
+	// bring cs pin high since the entire ocr is read
+	LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
+
+	return ocrContents;
 }

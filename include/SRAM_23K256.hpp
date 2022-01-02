@@ -17,7 +17,7 @@ class Sram_23K256 : public IStorageMedia
 	public:
 		static const int SRAM_SIZE = 32768;
 
-		Sram_23K256 (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const GPIO_PIN& csPin, bool hasMBR = false);
+		Sram_23K256 (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const GPIO_PIN& csPin);
 		~Sram_23K256();
 
 		// TODO currently this only works after several bytes are read and written to in byte mode, fix later!
@@ -37,13 +37,10 @@ class Sram_23K256 : public IStorageMedia
 		virtual void initialize() override {}
 		virtual void afterInitialize() override {}
 
-		virtual bool hasMBR() override { return m_HasMBR; }
-
 	private:
 		SPI_NUM   m_SpiNum;
 		GPIO_PORT m_CSPort; // chip select pin port
 		GPIO_PIN  m_CSPin;
-		bool 	  m_HasMBR;
 		bool      m_SequentialMode;
 
 		uint8_t readStatusRegister();
@@ -78,8 +75,6 @@ class Sram_23K256_Manager : public IStorageMedia
 		virtual bool needsInitialization() override { return false; }
 		virtual void initialize() override {}
 		virtual void afterInitialize() override {}
-
-		bool hasMBR() override { return false; }
 
 	private:
 		std::vector<Sram_23K256> 	m_Srams;

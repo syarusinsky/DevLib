@@ -1,9 +1,8 @@
 #include "CPPFile.hpp"
 
-CPPFile::CPPFile (const std::string& fileName, bool hasMBR) :
+CPPFile::CPPFile (const std::string& fileName) :
 	m_FileName( fileName ),
-	m_NeedsInitialization( false ),
-	m_HasMBR( hasMBR )
+	m_NeedsInitialization( false )
 {
 	m_File.open( "./" + m_FileName, std::fstream::in | std::fstream::out | std::ios::binary );
 	if ( !m_File.is_open() )

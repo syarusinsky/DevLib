@@ -1,10 +1,9 @@
 #include "SRAM_23K256.hpp"
 
-Sram_23K256::Sram_23K256 (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const GPIO_PIN& csPin, bool hasMBR) :
+Sram_23K256::Sram_23K256 (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const GPIO_PIN& csPin) :
 	m_SpiNum( spiNum ),
 	m_CSPort( csPort ),
 	m_CSPin( csPin ),
-	m_HasMBR( hasMBR ),
 	m_SequentialMode( false )
 {
 	// these srams seem to write incorrect data for the first couple of cycles, so lets get this over with
