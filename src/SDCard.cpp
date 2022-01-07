@@ -214,7 +214,7 @@ void SDCard::initialize()
 	this->setBlockSize( 512 );
 }
 
-uint8_t SDCard::sendCommand (uint8_t commandNum, uint8_t arg1, uint8_t arg2, uint8_t arg3, uint8_t arg4, uint8_t crc)
+uint8_t SDCard::sendCommand (uint8_t commandNum, uint8_t arg1, uint8_t arg2, uint8_t arg3, uint8_t arg4, uint8_t crc, bool leaveCSLow)
 {
 	// pull cs low
 	LLPD::gpio_output_set( m_CSPort, m_CSPin, false );
@@ -243,8 +243,8 @@ uint8_t SDCard::sendCommand (uint8_t commandNum, uint8_t arg1, uint8_t arg2, uin
 		responseTimeout++;
 	}
 
-	// pull cs high
-	LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
+	// pull cs high (or leave low)
+	LLPD::gpio_output_set( m_CSPort, m_CSPin, ! leaveCSLow );
 
 	return response;
 }
@@ -388,14 +388,11 @@ bool SDCard::writeSingleBlock (const SharedData<uint8_t>& data, const unsigned i
 	uint8_t baByte4 = ( address & 0xFF000000 ) >> 24;
 
 	// start single block write with CMD24
-	uint8_t resultByte = this->sendCommand( 24, baByte1, baByte2, baByte3, baByte4 );
+	uint8_t resultByte = this->sendCommand( 24, baByte1, baByte2, baByte3, baByte4, 0xFF, true );
 	while ( resultByte != VALID_R1_RESPONSE )
 	{
-		resultByte = this->sendCommand( 24, baByte1, baByte2, baByte3, baByte4 );
+		resultByte = this->sendCommand( 24, baByte1, baByte2, baByte3, baByte4, 0xFF, true );
 	}
-
-	// we're about to write a block, so bring the cs pin low
-	LLPD::gpio_output_set( m_CSPort, m_CSPin, false );
 
 	// send two dummy bytes (at least one is required, but we'll be safe)
 	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
@@ -418,17 +415,17 @@ bool SDCard::writeSingleBlock (const SharedData<uint8_t>& data, const unsigned i
 
 	// wait until no longer busy (finished writing)
 	resultByte = LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
-	while ( resultByte == 0x00 )
+	while ( resultByte != 0xFF )
 	{
 		resultByte = LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
 	}
 
+	// send two dummy bytes for safety
+	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+
 	// the full block is transferred, so we can bring cs pin high
 	LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
-
-	// send two dummy bytes (at least one is required, but we'll be safe)
-	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
-	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
 
 	return true;
 }
@@ -447,14 +444,11 @@ SharedData<uint8_t> SDCard::readSingleBlock (unsigned int blockNum)
 	uint8_t baByte4 = ( address & 0xFF000000 ) >> 24;
 
 	// start single block read with CMD17
-	uint8_t resultByte = this->sendCommand( 17, baByte1, baByte2, baByte3, baByte4 );
+	uint8_t resultByte = this->sendCommand( 17, baByte1, baByte2, baByte3, baByte4, 0xFF, true );
 	while ( resultByte != VALID_R1_RESPONSE )
 	{
-		resultByte = this->sendCommand( 17, baByte1, baByte2, baByte3, baByte4 );
+		resultByte = this->sendCommand( 17, baByte1, baByte2, baByte3, baByte4, 0xFF, true );
 	}
-
-	// we're about to begin the block transfer, so bring cs pin low
-	LLPD::gpio_output_set( m_CSPort, m_CSPin, false );
 
 	// wait for transmission start byte (0xFE)
 	uint8_t transmissionStartByte = LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
@@ -479,6 +473,86 @@ SharedData<uint8_t> SDCard::readSingleBlock (unsigned int blockNum)
 	return readBlockData;
 }
 
+bool SDCard::writeMultipleBlocks (const SharedData<uint8_t>& data, const unsigned int startBlockNum)
+{
+	// if byte addressing, we need to multiply by the block size
+	const unsigned int address = startBlockNum * m_ByteAddressingMultiplier;
+
+	// unsure the data is block sized
+	if ( data.getSize() % m_BlockSize != 0 ) return false;
+
+	const unsigned int numBlocksToWrite = data.getSize() / m_BlockSize;
+
+	// break block address into individual bytes
+	uint8_t baByte1 = address & 0xFF;
+	uint8_t baByte2 = ( address & 0xFF00     ) >> 8;
+	uint8_t baByte3 = ( address & 0xFF0000   ) >> 16;
+	uint8_t baByte4 = ( address & 0xFF000000 ) >> 24;
+
+	// start multiple block write with CMD25
+	uint8_t resultByte = this->sendCommand( 25, baByte1, baByte2, baByte3, baByte4, 0xFF, true );
+	while ( resultByte != VALID_R1_RESPONSE )
+	{
+		resultByte = this->sendCommand( 25, baByte1, baByte2, baByte3, baByte4, 0xFF, true );
+	}
+
+	for ( unsigned int block = 0; block < numBlocksToWrite; block++ )
+	{
+		// send two dummy bytes (at least one is required, but we'll be safe)
+		LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+		LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+
+		// send the start token (0xFC) for multiple block write
+		LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFC );
+
+		// write blocks
+		for ( unsigned int byte = 0; byte < m_BlockSize; byte++ )
+		{
+			LLPD::spi_master_send_and_recieve( m_SpiNum, data[(m_BlockSize * block) + byte] );
+		}
+
+		// two dummy bytes for crc
+		LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+		LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+
+		// wait for response
+		resultByte = LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+		while ( (resultByte & 0x1F) != 0x05 )
+		{
+			resultByte = LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+		}
+
+		// wait until no longer busy (finished writing)
+		resultByte = LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+		while ( resultByte != 0xFF )
+		{
+			resultByte = LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+		}
+	}
+
+	// send stop transmission token (0xFD)
+	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFD );
+
+	// dummy byte necessary after stop transmission token
+	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+
+	// wait until no longer busy (finished writing)
+	resultByte = LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+	while ( resultByte != 0xFF )
+	{
+		resultByte = LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+	}
+
+	// send two dummy bytes for safety
+	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+	LLPD::spi_master_send_and_recieve( m_SpiNum, 0xFF );
+
+	// the full block is transferred, so we can bring cs pin high
+	LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
+
+	return true;
+}
+
 SharedData<uint8_t> SDCard::readOCR()
 {
 	constexpr unsigned int ocrSize = sizeof( uint32_t );
@@ -486,14 +560,11 @@ SharedData<uint8_t> SDCard::readOCR()
 	SharedData<uint8_t> ocrContents = SharedData<uint8_t>::MakeSharedData( ocrSize );
 
 	// start ocr read with CMD58
-	uint8_t resultByte = this->sendCommand( 58, 0, 0, 0, 0, 0x00 );
+	uint8_t resultByte = this->sendCommand( 58, 0, 0, 0, 0, 0x00, true );
 	while ( resultByte != VALID_R1_RESPONSE )
 	{
-		resultByte = this->sendCommand( 58, 0, 0, 0, 0, 0x00 );
+		resultByte = this->sendCommand( 58, 0, 0, 0, 0, 0x00, true );
 	}
-
-	// we're about to begin the ocr transfer, so bring cs pin low
-	LLPD::gpio_output_set( m_CSPort, m_CSPin, false );
 
 	// read data into buffer
 	for ( unsigned int byte = 0; byte < ocrSize; byte++ )
