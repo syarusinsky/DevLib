@@ -84,23 +84,13 @@ class SharedData
 
 		T& get (unsigned int number = 0) const
 		{
-			if ( number < m_Size )
-			{
-				return m_Data[number];
-			}
-
-			return m_Data[0];
+			return m_Data[number];
 		}
 
 		T* getPtr (unsigned int number = 0) const
 		{
-			if ( number < m_Size )
-			{
-				return &m_Data[number];
+			return &m_Data[number];
 			}
-
-			return nullptr;
-		}
 
 		unsigned int getSize() const { return m_Size; }
 
