@@ -1,6 +1,8 @@
 #ifndef SHAREDDATA_HPP
 #define SHAREDDATA_HPP
 
+#include "IAllocator.hpp"
+
 /*************************************************************************
  * The SharedData class is basically just a shared pointer. It's mostly
  * used for memory that needs to be allocated in IStorageMedia but
@@ -16,12 +18,13 @@ class SharedData
 		SharedData (const SharedData& other)
 		{
 			// if the underlying data is different, we need to first decrease the ref count of the previous data and delete if necessary
-			this->decrementAndDeletePreviousUnderlyingDataIfNecessary (other);
+			this->decrementAndDeletePreviousUnderlyingDataIfNecessary( other );
 
 			// then it's safe to set the size, data, and ref count object to the other shared data's
-			m_Size     = other.m_Size;
-			m_Data     = other.m_Data;
-			m_RefCount = other.m_RefCount;
+			m_Size      = other.m_Size;
+			m_Data      = other.m_Data;
+			m_RefCount  = other.m_RefCount;
+			m_Allocator = other.m_Allocator;
 
 			(*m_RefCount)++;
 		}
@@ -34,25 +37,35 @@ class SharedData
 				if ( m_Data )
 				{
 					m_TotalBytesAllocated -= ( m_Size * sizeof(T) );
-					delete[] m_Data;
+					if ( m_Allocator )
+					{
+						m_Allocator->free( m_Data );
+					}
+					else
+					{
+						delete[] m_Data;
+					}
 				}
 
 				delete m_RefCount;
 			}
 		}
 
-		static SharedData MakeSharedData (unsigned int size, T* data)
+		static SharedData MakeSharedData (unsigned int size, IAllocator* allocator = nullptr)
 		{
+			T* data = nullptr;
+			if ( allocator )
+			{
+				data = reinterpret_cast<T*>( allocator->allocatePrimativeArray<uint8_t>(size * sizeof(T)) );
+			}
+			else
+			{
+				data = new T[size];
+			}
+
 			m_TotalBytesAllocated += ( size * sizeof(T) );
 
-			return SharedData( size, data );
-		}
-
-		static SharedData MakeSharedData (unsigned int size)
-		{
-			m_TotalBytesAllocated += ( size * sizeof(T) );
-
-			return SharedData( size, new T[size] );
+			return SharedData( size, data, allocator );
 		}
 
 		static SharedData MakeSharedDataFromRange (const SharedData& originalData, unsigned int startIndex, unsigned int endIndex)
@@ -97,7 +110,7 @@ class SharedData
 		T* getPtr (unsigned int number = 0) const
 		{
 			return &m_Data[number];
-			}
+		}
 
 		unsigned int getSize() const { return m_Size; }
 
@@ -114,9 +127,10 @@ class SharedData
 			this->decrementAndDeletePreviousUnderlyingDataIfNecessary (other);
 
 			// then it's safe to set the size, data, and ref count object to the other shared data's
-			m_Size     = other.m_Size;
-			m_Data     = other.m_Data;
-			m_RefCount = other.m_RefCount;
+			m_Size      = other.m_Size;
+			m_Data      = other.m_Data;
+			m_RefCount  = other.m_RefCount;
+			m_Allocator = other.m_Allocator;
 
 			(*m_RefCount)++;
 
@@ -160,11 +174,13 @@ class SharedData
 		unsigned int 	m_Size = 0;
 		T* 		m_Data = nullptr;
 		Counter* 	m_RefCount = nullptr;
+		IAllocator* 	m_Allocator = nullptr;
 
-		SharedData (unsigned int size, T* data) :
+		SharedData (unsigned int size, T* data, IAllocator* allocator = nullptr) :
 			m_Size( size ),
 			m_Data( data ),
-			m_RefCount( new Counter() )
+			m_RefCount( new Counter() ),
+			m_Allocator( allocator )
 		{
 			(*m_RefCount)++;
 		}
@@ -172,7 +188,8 @@ class SharedData
 		SharedData() :
 			m_Size( 0 ),
 			m_Data( nullptr ),
-			m_RefCount( new Counter() )
+			m_RefCount( new Counter() ),
+			m_Allocator( nullptr )
 		{
 			(*m_RefCount)++;
 		}
@@ -188,7 +205,14 @@ class SharedData
 					if ( m_Data )
 					{
 						m_TotalBytesAllocated -= ( m_Size * sizeof(T) );
-						delete[] m_Data;
+						if ( m_Allocator )
+						{
+							m_Allocator->free( m_Data );
+						}
+						else
+						{
+							delete[] m_Data;
+						}
 					}
 
 					delete m_RefCount;
