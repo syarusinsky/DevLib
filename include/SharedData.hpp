@@ -41,6 +41,13 @@ class SharedData
 			}
 		}
 
+		static SharedData MakeSharedData (unsigned int size, T* data)
+		{
+			m_TotalBytesAllocated += ( size * sizeof(T) );
+
+			return SharedData( size, data );
+		}
+
 		static SharedData MakeSharedData (unsigned int size)
 		{
 			m_TotalBytesAllocated += ( size * sizeof(T) );
