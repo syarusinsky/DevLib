@@ -1,5 +1,6 @@
 #include "Neotrellis.hpp"
 
+#include "LLPD.hpp"
 
 Neotrellis::Neotrellis (const I2C_NUM& i2cNum, uint8_t i2cAddr, const GPIO_PORT& intPort, const GPIO_PIN& intPin) :
 	m_I2CNum( i2cNum ),
@@ -14,8 +15,10 @@ Neotrellis::~Neotrellis()
 {
 }
 
-void Neotrellis::begin()
+void Neotrellis::begin (NeotrellisListener* listener)
 {
+	NeotrellisInterface::begin( listener );
+
 	// set slave address
 	LLPD::i2c_master_set_slave_address( m_I2CNum, I2C_ADDR_MODE::BITS_7, m_I2CAddr );
 
@@ -98,11 +101,11 @@ void Neotrellis::pollForEvents()
 
 				uint8_t keyX = ( eventBuffer[event] / 4 ) % 4;
 				uint8_t keyY = ( eventBuffer[event] / 32 );
-				uint8_t keyNum = keyX + ( keyY * 4 );
+				uint8_t keyNum = keyX + ( keyY * NEO_TRELLIS_NUM_COLUMNS );
 
 				if ( m_Callbacks[keyNum] != nullptr )
 				{
-					m_Callbacks[keyNum]( this, keypadReleased, keyX, keyY );
+					m_Callbacks[keyNum]( m_NeotrellisListener, this, keypadReleased, keyX, keyY );
 				}
 			}
 		}
@@ -111,7 +114,7 @@ void Neotrellis::pollForEvents()
 
 void Neotrellis::registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback)
 {
-	m_Callbacks[ keyCol + (keyRow * NEO_TRELLIS_NUM_ROWS) ] = callback;
+	m_Callbacks[ keyCol + (keyRow * NEO_TRELLIS_NUM_COLUMNS) ] = callback;
 }
 
 Multitrellis::Multitrellis (unsigned int stackedRows, unsigned int stackedColumns, const I2C_NUM& i2cNum, uint8_t i2cAddresses[],
@@ -134,15 +137,15 @@ Multitrellis::~Multitrellis()
 	}
 }
 
-void Multitrellis::begin()
+void Multitrellis::begin (NeotrellisListener* listener)
 {
 	for ( unsigned int neotrellis = 0; neotrellis < (m_NumStackedRows * m_NumStackedCols); neotrellis++ )
 	{
-		m_NeotrellisArr[neotrellis]->begin();
+		m_NeotrellisArr[neotrellis]->begin( listener );
 	}
 }
 
-void Multitrellis::setColor (unsigned int keyRow, unsigned int keyCol, uint8_t r, uint8_t g, uint8_t b)
+void Multitrellis::setColor (uint8_t keyRow, uint8_t keyCol, uint8_t r, uint8_t g, uint8_t b)
 {
 	if ( keyRow < (m_NumStackedRows * NEO_TRELLIS_NUM_ROWS) && keyCol < (m_NumStackedCols * NEO_TRELLIS_NUM_COLUMNS) )
 	{
@@ -163,7 +166,7 @@ void Multitrellis::pollForEvents()
 	}
 }
 
-void Multitrellis::registerCallback (unsigned int keyRow, unsigned int keyCol, NeotrellisCallback callback)
+void Multitrellis::registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback)
 {
 	if ( keyRow < (m_NumStackedRows * NEO_TRELLIS_NUM_ROWS) && keyCol < (m_NumStackedCols * NEO_TRELLIS_NUM_COLUMNS) )
 	{

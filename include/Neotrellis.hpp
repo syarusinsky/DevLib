@@ -13,7 +13,11 @@
  * makes this much easier.
 **************************************************************************/
 
-#include "LLPD.hpp"
+#include <stdint.h>
+
+enum class I2C_NUM;
+enum class GPIO_PORT;
+enum class GPIO_PIN;
 
 #define NEO_TRELLIS_NUM_ROWS 4
 #define NEO_TRELLIS_NUM_COLUMNS 4
@@ -41,24 +45,56 @@
 #define SEESAW_KEYPAD_COUNT 0x04
 #define SEESAW_KEYPAD_FIFO 0x10
 
-class Neotrellis;
+class NeotrellisListener;
+class NeotrellisInterface;
 
-typedef void(*NeotrellisCallback)(Neotrellis*, bool, uint8_t, uint8_t); // bool is true if released, false if pressed.
-									// the first uint8_t is the row, the second is the column
+typedef void(*NeotrellisCallback)(NeotrellisListener*, NeotrellisInterface*, bool, uint8_t, uint8_t); // bool is true if released, false if pressed.
+											// the first uint8_t is the row, the second is the column
 
-class Neotrellis
+class NeotrellisListener
+{
+	public:
+		virtual ~NeotrellisListener() {}
+
+		virtual void onNeotrellisButton (NeotrellisInterface*, bool, uint8_t, uint8_t) = 0;
+};
+
+class NeotrellisInterface
+{
+	public:
+		virtual ~NeotrellisInterface() {}
+
+		virtual void begin(NeotrellisListener* listener) { m_NeotrellisListener = listener; };
+
+		virtual void setColor (uint8_t keyRow, uint8_t keyCol, uint8_t r, uint8_t g, uint8_t b) = 0;
+
+		virtual void pollForEvents() = 0;
+
+		virtual void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback) = 0;
+
+		virtual uint8_t getNumRows() = 0;
+		virtual uint8_t getNumCols() = 0;
+
+	protected:
+		NeotrellisListener* 	m_NeotrellisListener;
+};
+
+class Neotrellis : public NeotrellisInterface
 {
 	public:
 		Neotrellis (const I2C_NUM& i2cNum, uint8_t i2cAddr, const GPIO_PORT& intPort, const GPIO_PIN& intPin);
-		~Neotrellis();
+		~Neotrellis() override;
 
-		void begin();
+		void begin(NeotrellisListener* listener) override;
 
-		void setColor (uint8_t keyRow, uint8_t keyCol, uint8_t r, uint8_t g, uint8_t b);
+		void setColor (uint8_t keyRow, uint8_t keyCol, uint8_t r, uint8_t g, uint8_t b) override;
 
-		void pollForEvents();
+		void pollForEvents() override;
 
-		void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback);
+		void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback) override;
+
+		uint8_t getNumRows() override { return NEO_TRELLIS_NUM_ROWS; }
+		uint8_t getNumCols() override { return NEO_TRELLIS_NUM_COLUMNS; }
 
 	private:
 		const I2C_NUM   	m_I2CNum;
@@ -68,21 +104,24 @@ class Neotrellis
 		NeotrellisCallback 	m_Callbacks[NEO_TRELLIS_NUM_ROWS * NEO_TRELLIS_NUM_COLUMNS];
 };
 
-class Multitrellis
+class Multitrellis : public NeotrellisInterface
 {
 	public:
 		// you need to pass in the i2c addresses in row-major order
 		Multitrellis (unsigned int stackedRows, unsigned int stackedColumns, const I2C_NUM& i2cNum, uint8_t i2cAddresses[],
 				const GPIO_PORT& intPort, const GPIO_PIN& intPin);
-		~Multitrellis();
+		~Multitrellis() override;
 
-		void begin();
+		void begin(NeotrellisListener* listener) override;
 
-		void setColor (unsigned int keyRow, unsigned int keyCol, uint8_t r, uint8_t g, uint8_t b);
+		void setColor (uint8_t keyRow, uint8_t keyCol, uint8_t r, uint8_t g, uint8_t b) override;
 
-		void pollForEvents();
+		void pollForEvents() override;
 
-		void registerCallback (unsigned int keyRow, unsigned int keyCol, NeotrellisCallback callback);
+		void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback) override;
+
+		uint8_t getNumRows() override { return m_NumStackedRows; }
+		uint8_t getNumCols() override { return m_NumStackedCols; }
 
 	private:
 		const unsigned int m_NumStackedRows;
