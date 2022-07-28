@@ -20,6 +20,7 @@ void CPPFile::writeToMedia (const SharedData<uint8_t>& data, const unsigned int 
 {
 	m_File.seekp( offsetInBytes );
 	m_File.write( reinterpret_cast<char*>(data.getPtr()), data.getSizeInBytes() );
+	m_File.flush();
 }
 
 SharedData<uint8_t> CPPFile::readFromMedia (const unsigned int sizeInBytes, const unsigned int offsetInBytes)
