@@ -2,6 +2,8 @@
 
 #include "LLPD.hpp"
 
+#define noOp (void)0
+
 Neotrellis::Neotrellis (const I2C_NUM& i2cNum, uint8_t i2cAddr, const GPIO_PORT& intPort, const GPIO_PIN& intPin) :
 	m_I2CNum( i2cNum ),
 	m_I2CAddr( i2cAddr ),
@@ -25,22 +27,29 @@ void Neotrellis::begin (NeotrellisListener* listener)
 	// software reset
 	LLPD::i2c_master_write( m_I2CNum, true, 3, SEESAW_STATUS_BASE, SEESAW_STATUS_SWRST, 0xFF );
 
-	// get hardware id
-	LLPD::i2c_master_write( m_I2CNum, true, 2, SEESAW_STATUS_BASE, SEESAW_STATUS_HW_ID );
-	uint8_t hwId1 = 255;
-	while ( hwId1 != SEESAW_NEOTRELLIS_HW_ID )
+	// no op delay
+	for ( unsigned int numNoOp = 0; numNoOp < 500000; numNoOp++ )
 	{
-		LLPD::i2c_master_read( m_I2CNum, true, 1, &hwId1 );
+		noOp;
 	}
 
+	// get hardware id
+	uint8_t hwId1 = 0xFF;
+	LLPD::i2c_master_write( m_I2CNum, true, 2, SEESAW_STATUS_BASE, SEESAW_STATUS_HW_ID );
+	LLPD::i2c_master_read( m_I2CNum, true, 1, &hwId1 );
+
 	// set neopixel type
-	LLPD::i2c_master_write( m_I2CNum, true, 3, SEESAW_NEOPIXEL_BASE, SEESAW_NEOPIXEL_SPEED, 0x0 );
+	LLPD::i2c_master_write( m_I2CNum, true, 3, SEESAW_NEOPIXEL_BASE, SEESAW_NEOPIXEL_SPEED, 0x01 );
 
 	// update neopixel length
 	LLPD::i2c_master_write( m_I2CNum, true, 4, SEESAW_NEOPIXEL_BASE, SEESAW_NEOPIXEL_BUF_LENGTH, 0x0, 0x30 );
 
 	// set neopixel pin
-	LLPD::i2c_master_write( m_I2CNum, true, 3, SEESAW_NEOPIXEL_BASE, SEESAW_NEOPIXEL_PIN, 0x3 );
+	LLPD::i2c_master_write( m_I2CNum, true, 3, SEESAW_NEOPIXEL_BASE, SEESAW_NEOPIXEL_PIN, 0x03 );
+
+	// ask for hardware id again for some reason? (arduino example code does this)
+	LLPD::i2c_master_write( m_I2CNum, true, 2, SEESAW_STATUS_BASE, SEESAW_STATUS_HW_ID );
+	LLPD::i2c_master_read( m_I2CNum, true, 1, &hwId1 );
 
 	// enable keypad interrupt
 	LLPD::i2c_master_write( m_I2CNum, true, 3, SEESAW_KEYPAD_BASE, SEESAW_KEYPAD_INTENSET, 0x01 );
@@ -178,3 +187,5 @@ void Multitrellis::registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisC
 									callback );
 	}
 }
+
+#undef noOp
