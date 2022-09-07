@@ -14,6 +14,7 @@
 **************************************************************************/
 
 #include <stdint.h>
+#include <utility>
 
 enum class I2C_NUM;
 enum class GPIO_PORT;
@@ -47,6 +48,7 @@ enum class GPIO_PIN;
 
 class NeotrellisListener;
 class NeotrellisInterface;
+class Multitrellis;
 
 typedef void(*NeotrellisCallback)(NeotrellisListener*, NeotrellisInterface*, bool, uint8_t, uint8_t); // bool is true if released, false if pressed.
 											// the first uint8_t is the row, the second is the column
@@ -72,6 +74,9 @@ class NeotrellisInterface
 
 		virtual void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback) = 0;
 
+		virtual uint8_t getStackedRowNumInMultitrellis (Multitrellis* multitrellis) = 0; // returns 255 if called from multitrellis or not found
+		virtual uint8_t getStackedColNumInMultitrellis (Multitrellis* multitrellis) = 0; // returns 255 if called from multitrellis or not found
+
 		virtual uint8_t getNumRows() = 0;
 		virtual uint8_t getNumCols() = 0;
 
@@ -95,6 +100,9 @@ class Neotrellis : public NeotrellisInterface
 
 		uint8_t getNumRows() override { return NEO_TRELLIS_NUM_ROWS; }
 		uint8_t getNumCols() override { return NEO_TRELLIS_NUM_COLUMNS; }
+
+		uint8_t getStackedRowNumInMultitrellis (Multitrellis* multitrellis) override;
+		uint8_t getStackedColNumInMultitrellis (Multitrellis* multitrellis) override;
 
 	private:
 		const I2C_NUM   	m_I2CNum;
@@ -120,13 +128,18 @@ class Multitrellis : public NeotrellisInterface
 
 		void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback) override;
 
-		uint8_t getNumRows() override { return m_NumStackedRows; }
-		uint8_t getNumCols() override { return m_NumStackedCols; }
+		uint8_t getNumRows() override { return m_NumStackedRows * NEO_TRELLIS_NUM_ROWS; }
+		uint8_t getNumCols() override { return m_NumStackedCols * NEO_TRELLIS_NUM_COLUMNS; }
+
+		uint8_t getStackedRowNumInMultitrellis (Multitrellis* multitrellis) override { return 255; }
+		uint8_t getStackedColNumInMultitrellis (Multitrellis* multitrellis) override { return 255; }
+
+		Neotrellis** getNeotrellisArray() { return m_NeotrellisArr; }
 
 	private:
-		const unsigned int m_NumStackedRows;
-		const unsigned int m_NumStackedCols;
-		Neotrellis*  m_NeotrellisArr[NEO_TRELLIS_MAX_TILES]; // tiles are stored in row major order
+		const unsigned int 		m_NumStackedRows;
+		const unsigned int 		m_NumStackedCols;
+		Neotrellis*  			m_NeotrellisArr[NEO_TRELLIS_MAX_TILES]; // tiles are stored in row major order
 };
 
 #endif // NEOTRELLIS_HPP

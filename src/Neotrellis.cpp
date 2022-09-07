@@ -126,6 +126,36 @@ void Neotrellis::registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCal
 	m_Callbacks[ keyCol + (keyRow * NEO_TRELLIS_NUM_COLUMNS) ] = callback;
 }
 
+uint8_t Neotrellis::getStackedRowNumInMultitrellis (Multitrellis* multitrellis)
+{
+	Neotrellis** neotrellisArr = multitrellis->getNeotrellisArray();
+
+	for ( unsigned int rowNum = 0; rowNum < multitrellis->getNumRows() / NEO_TRELLIS_NUM_ROWS; rowNum++ )
+	{
+		for ( unsigned int colNum = 0; colNum < multitrellis->getNumCols() / NEO_TRELLIS_NUM_COLUMNS; colNum++ )
+		{
+			if ( this == neotrellisArr[colNum + (rowNum * (multitrellis->getNumCols() / NEO_TRELLIS_NUM_COLUMNS))] ) return rowNum;
+		}
+	}
+
+	return 255;
+}
+
+uint8_t Neotrellis::getStackedColNumInMultitrellis (Multitrellis* multitrellis)
+{
+	Neotrellis** neotrellisArr = multitrellis->getNeotrellisArray();
+
+	for ( unsigned int rowNum = 0; rowNum < multitrellis->getNumRows() / NEO_TRELLIS_NUM_ROWS; rowNum++ )
+	{
+		for ( unsigned int colNum = 0; colNum < multitrellis->getNumCols() / NEO_TRELLIS_NUM_COLUMNS; colNum++ )
+		{
+			if ( this == neotrellisArr[colNum + (rowNum * (multitrellis->getNumCols() / NEO_TRELLIS_NUM_COLUMNS))] ) return colNum;
+		}
+	}
+
+	return 255;
+}
+
 Multitrellis::Multitrellis (unsigned int stackedRows, unsigned int stackedColumns, const I2C_NUM& i2cNum, uint8_t i2cAddresses[],
 				const GPIO_PORT& intPort, const GPIO_PIN& intPin) :
 	m_NumStackedRows( stackedRows ),
