@@ -68,11 +68,11 @@ class NeotrellisInterface
 
 		virtual void begin(NeotrellisListener* listener) { m_NeotrellisListener = listener; };
 
-		virtual void setColor (uint8_t keyRow, uint8_t keyCol, uint8_t r, uint8_t g, uint8_t b) = 0;
+		virtual void setColor (uint8_t keyCol, uint8_t keyRow, uint8_t r, uint8_t g, uint8_t b) = 0;
 
 		virtual void pollForEvents() = 0;
 
-		virtual void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback) = 0;
+		virtual void registerCallback (uint8_t keyCol, uint8_t keyRow, NeotrellisCallback callback) = 0;
 
 		virtual uint8_t getStackedRowNumInMultitrellis (Multitrellis* multitrellis) = 0; // returns 255 if called from multitrellis or not found
 		virtual uint8_t getStackedColNumInMultitrellis (Multitrellis* multitrellis) = 0; // returns 255 if called from multitrellis or not found
@@ -92,11 +92,11 @@ class Neotrellis : public NeotrellisInterface
 
 		void begin(NeotrellisListener* listener) override;
 
-		void setColor (uint8_t keyRow, uint8_t keyCol, uint8_t r, uint8_t g, uint8_t b) override;
+		void setColor (uint8_t keyCol, uint8_t keyRow, uint8_t r, uint8_t g, uint8_t b) override;
 
 		void pollForEvents() override;
 
-		void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback) override;
+		void registerCallback (uint8_t keyCol, uint8_t keyRow, NeotrellisCallback callback) override;
 
 		uint8_t getNumRows() override { return NEO_TRELLIS_NUM_ROWS; }
 		uint8_t getNumCols() override { return NEO_TRELLIS_NUM_COLUMNS; }
@@ -122,11 +122,11 @@ class Multitrellis : public NeotrellisInterface
 
 		void begin(NeotrellisListener* listener) override;
 
-		void setColor (uint8_t keyRow, uint8_t keyCol, uint8_t r, uint8_t g, uint8_t b) override;
+		void setColor (uint8_t keyCol, uint8_t keyRow, uint8_t r, uint8_t g, uint8_t b) override;
 
 		void pollForEvents() override;
 
-		void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback) override;
+		void registerCallback (uint8_t keyCol, uint8_t keyRow, NeotrellisCallback callback) override;
 
 		uint8_t getNumRows() override { return m_NumStackedRows * NEO_TRELLIS_NUM_ROWS; }
 		uint8_t getNumCols() override { return m_NumStackedCols * NEO_TRELLIS_NUM_COLUMNS; }
