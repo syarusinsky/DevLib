@@ -2,7 +2,9 @@
 
 #include "LLPD.hpp"
 
-#define noOp (void)0
+#define NOOP (void)0
+#define TYP_DEL 20
+#define DELAY(end) for (int i = 0; i < (end); i++) { NOOP; }
 
 Neotrellis::Neotrellis (const I2C_NUM& i2cNum, uint8_t i2cAddr, const GPIO_PORT& intPort, const GPIO_PIN& intPin) :
 	m_I2CNum( i2cNum ),
@@ -27,40 +29,47 @@ void Neotrellis::begin (NeotrellisListener* listener)
 	// software reset
 	LLPD::i2c_master_write( m_I2CNum, true, 3, SEESAW_STATUS_BASE, SEESAW_STATUS_SWRST, 0xFF );
 
-	// no op delay
-	for ( unsigned int numNoOp = 0; numNoOp < 500000; numNoOp++ )
-	{
-		noOp;
-	}
+	// long delay necessary after software reset
+	DELAY( 500000 )
 
 	// get hardware id
 	uint8_t hwId1 = 0xFF;
 	LLPD::i2c_master_write( m_I2CNum, true, 2, SEESAW_STATUS_BASE, SEESAW_STATUS_HW_ID );
+	DELAY( TYP_DEL )
 	LLPD::i2c_master_read( m_I2CNum, true, 1, &hwId1 );
+	DELAY( TYP_DEL )
 
 	// set neopixel type
 	LLPD::i2c_master_write( m_I2CNum, true, 3, SEESAW_NEOPIXEL_BASE, SEESAW_NEOPIXEL_SPEED, 0x01 );
+	DELAY( TYP_DEL )
 
 	// update neopixel length
 	LLPD::i2c_master_write( m_I2CNum, true, 4, SEESAW_NEOPIXEL_BASE, SEESAW_NEOPIXEL_BUF_LENGTH, 0x0, 0x30 );
+	DELAY( TYP_DEL )
 
 	// set neopixel pin
 	LLPD::i2c_master_write( m_I2CNum, true, 3, SEESAW_NEOPIXEL_BASE, SEESAW_NEOPIXEL_PIN, 0x03 );
+	DELAY( TYP_DEL )
 
 	// ask for hardware id again for some reason? (arduino example code does this)
 	LLPD::i2c_master_write( m_I2CNum, true, 2, SEESAW_STATUS_BASE, SEESAW_STATUS_HW_ID );
+	DELAY( TYP_DEL )
 	LLPD::i2c_master_read( m_I2CNum, true, 1, &hwId1 );
+	DELAY( TYP_DEL )
 
 	// enable keypad interrupt
 	LLPD::i2c_master_write( m_I2CNum, true, 3, SEESAW_KEYPAD_BASE, SEESAW_KEYPAD_INTENSET, 0x01 );
+	DELAY( TYP_DEL )
 
 	// enable keypad events
 	for ( uint8_t key = 0; key < 16; key++ )
 	{
 		LLPD::i2c_master_write( m_I2CNum, true, 4, SEESAW_KEYPAD_BASE, SEESAW_KEYPAD_EVENT,
 				NEO_TRELLIS_KEY(key), SEESAW_KEYPAD_EDGE_RISING );
+		DELAY( TYP_DEL )
 		LLPD::i2c_master_write( m_I2CNum, true, 4, SEESAW_KEYPAD_BASE, SEESAW_KEYPAD_EVENT,
 				NEO_TRELLIS_KEY(key), SEESAW_KEYPAD_EDGE_FALLING );
+		DELAY( TYP_DEL )
 	}
 }
 
@@ -73,9 +82,11 @@ void Neotrellis::setColor (uint8_t keyCol, uint8_t keyRow, uint8_t r, uint8_t g,
 
 	// set color
 	LLPD::i2c_master_write( m_I2CNum, true, 7, SEESAW_NEOPIXEL_BASE, SEESAW_NEOPIXEL_BUF, 0x0, keyVal, g, r, b );
+	DELAY( TYP_DEL )
 
 	// show neopixels
 	LLPD::i2c_master_write( m_I2CNum, true, 2, SEESAW_NEOPIXEL_BASE, SEESAW_NEOPIXEL_SHOW );
+	DELAY( TYP_DEL )
 }
 
 void Neotrellis::pollForEvents()
@@ -87,8 +98,10 @@ void Neotrellis::pollForEvents()
 
 		// get event count
 		LLPD::i2c_master_write( m_I2CNum, true, 2, SEESAW_KEYPAD_BASE, SEESAW_KEYPAD_COUNT );
+		DELAY( TYP_DEL )
 		uint8_t eventCount = 0;
 		LLPD::i2c_master_read( m_I2CNum, true, 1, &eventCount );
+		DELAY( TYP_DEL )
 
 		// sometimes event count can return 255, which is invalid
 		if ( eventCount != 255 && eventCount > 0 )
@@ -98,7 +111,9 @@ void Neotrellis::pollForEvents()
 
 			// read keypad fifo
 			LLPD::i2c_master_write( m_I2CNum, true, 2, SEESAW_KEYPAD_BASE, SEESAW_KEYPAD_FIFO );
+			DELAY( TYP_DEL )
 			LLPD::i2c_master_read_into_array( m_I2CNum, true, eventCount, eventBuffer );
+			DELAY( TYP_DEL )
 
 			for ( int event = 0; event < eventCount; event++ )
 			{
