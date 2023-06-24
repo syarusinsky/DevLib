@@ -42,7 +42,7 @@ void SDCard::writeToMedia (const SharedData<uint8_t>& data, const unsigned int a
 	for ( unsigned int block = startBlock; block <= endBlock; block++ )
 	{
 		// get the original block from the sd card
-		SharedData<uint8_t> blockToWrite = this->readSingleBlock( block * m_BlockSize );
+		SharedData<uint8_t> blockToWrite = this->readSingleBlock( block );
 
 		// make modifications to the original block
 		for ( unsigned int byte = 0; byte < m_BlockSize; byte++ )
