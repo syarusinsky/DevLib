@@ -12,7 +12,9 @@ Sram_23K256::Sram_23K256 (const SPI_NUM& spiNum, const GPIO_PORT& csPort, const 
 	uint8_t dataRead = 0;
 	while ( dataRead != dataToWrite )
 	{
+		LLPD::tim6_delay ( 1000 );
 		this->writeByte( addressToReadAndWriteFrom, dataToWrite );
+		LLPD::tim6_delay ( 1000 );
 		dataRead = this->readByte( addressToReadAndWriteFrom );
 	}
 }
