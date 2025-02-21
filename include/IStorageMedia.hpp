@@ -17,6 +17,7 @@ class IStorageMedia
 
 		virtual void writeToMedia (const SharedData<uint8_t>& data, const unsigned int offsetInBytes) = 0;
 		virtual SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int offsetInBytes) = 0;
+		virtual void readFromMedia (const unsigned int offsetInBytes, const SharedData<uint8_t>& data) = 0;
 
 		virtual bool needsInitialization() = 0;
 		virtual void initialize() = 0;

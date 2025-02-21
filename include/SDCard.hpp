@@ -12,6 +12,8 @@ class SDCard : public IStorageMedia
 
 		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int address) override;
 		SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int address) override;
+		void readFromMedia (const unsigned int address, const SharedData<uint8_t>& data) override;
+
 
 		bool writeSingleBlock (const SharedData<uint8_t>& data, const unsigned int blockNum);
 		bool writeMultipleBlocks (const SharedData<uint8_t>& data, const unsigned int startBlockNum);

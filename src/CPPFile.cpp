@@ -33,6 +33,12 @@ SharedData<uint8_t> CPPFile::readFromMedia (const unsigned int sizeInBytes, cons
 	return data;
 }
 
+void CPPFile::readFromMedia (const unsigned int offsetInBytes, const SharedData<uint8_t>& data)
+{
+	m_File.seekg( offsetInBytes );
+	m_File.read( reinterpret_cast<char*>(data.getPtr()), data.getSizeInBytes() );
+}
+
 bool CPPFile::needsInitialization()
 {
 	return m_NeedsInitialization;

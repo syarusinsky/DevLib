@@ -17,6 +17,7 @@ class CPPFile : public IStorageMedia
 
 		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int offsetInBytes) override;
 		SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int offsetInBytes) override;
+		void readFromMedia (const unsigned int offsetInBytes, const SharedData<uint8_t>& data) override;
 
 		bool needsInitialization() override;
 		void initialize() override;

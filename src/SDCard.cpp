@@ -107,6 +107,46 @@ SharedData<uint8_t> SDCard::readFromMedia (const unsigned int sizeInBytes, const
 	return dataToRead;
 }
 
+void SDCard::readFromMedia (const unsigned int address, const SharedData<uint8_t>& data)
+{
+	uint8_t* dataToReadPtr = data.getPtr();
+	unsigned int sizeInBytes = data.getSizeInBytes();
+
+	unsigned int startBlock = address / m_BlockSize;
+	unsigned int endBlock = ( address + sizeInBytes - 1 ) / m_BlockSize;
+
+	// get the number of bytes we'll need to skip from the beginning of the first block
+	unsigned int bytesToSkip = address % m_BlockSize;
+
+	unsigned int bytesSkipped = 0;
+	unsigned int bytesRead = 0;
+
+	for ( unsigned int block = startBlock; block <= endBlock; block++ )
+	{
+		SharedData<uint8_t> blockData = this->readSingleBlock( block );
+
+		// make modifications to the original block
+		for ( unsigned int byte = 0; byte < m_BlockSize; byte++ )
+		{
+			if ( bytesRead == sizeInBytes )
+			{
+				// we've finished reading
+				break;
+			}
+			else if ( bytesSkipped == bytesToSkip )
+			{
+				dataToReadPtr[bytesRead] = blockData[byte];
+				bytesRead++;
+			}
+			else
+			{
+				// these bytes aren't of interest to us
+				bytesSkipped++;
+			}
+		}
+	}
+}
+
 void SDCard::setBlockSize (const unsigned int blockSize)
 {
 	m_BlockSize = blockSize;

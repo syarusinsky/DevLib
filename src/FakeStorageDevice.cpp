@@ -43,3 +43,11 @@ SharedData<uint8_t> FakeStorageDevice::readFromMedia (const unsigned int sizeInB
 
 	return data;
 }
+
+void FakeStorageDevice::readFromMedia (const unsigned int offsetInBytes, const SharedData<uint8_t>& data)
+{
+	for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+	{
+		data[byte] = m_DataArray[offsetInBytes + byte];
+	}
+}

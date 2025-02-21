@@ -41,7 +41,7 @@ class SharedData
 					{
 						m_Allocator->free( m_Data );
 					}
-					else
+					else if ( m_DeleteUnderlyingDataIfNoRefs )
 					{
 						delete[] m_Data;
 					}
@@ -66,6 +66,13 @@ class SharedData
 			m_TotalBytesAllocated += ( size * sizeof(T) );
 
 			return SharedData( size, data, allocator );
+		}
+
+		// This function does not delete the underlying data after losing all it's references, so should only be used for memory limited
+		// applications where arrays need to be reused to save space
+		static SharedData MakeSharedData (unsigned int size, T* data)
+		{
+			return SharedData( size, data, nullptr, false );
 		}
 
 		static SharedData MakeSharedDataFromRange (const SharedData& originalData, unsigned int startIndex, unsigned int endIndex)
@@ -175,12 +182,14 @@ class SharedData
 		T* 		m_Data = nullptr;
 		Counter* 	m_RefCount = nullptr;
 		IAllocator* 	m_Allocator = nullptr;
+		bool 		m_DeleteUnderlyingDataIfNoRefs = true;
 
-		SharedData (unsigned int size, T* data, IAllocator* allocator = nullptr) :
+		SharedData (unsigned int size, T* data, IAllocator* allocator = nullptr, bool deleteUnderlyingDataIfNoRefs = true) :
 			m_Size( size ),
 			m_Data( data ),
 			m_RefCount( new Counter() ),
-			m_Allocator( allocator )
+			m_Allocator( allocator ),
+			m_DeleteUnderlyingDataIfNoRefs( deleteUnderlyingDataIfNoRefs )
 		{
 			(*m_RefCount)++;
 		}
@@ -189,7 +198,8 @@ class SharedData
 			m_Size( 0 ),
 			m_Data( nullptr ),
 			m_RefCount( new Counter() ),
-			m_Allocator( nullptr )
+			m_Allocator( nullptr ),
+			m_DeleteUnderlyingDataIfNoRefs( true )
 		{
 			(*m_RefCount)++;
 		}

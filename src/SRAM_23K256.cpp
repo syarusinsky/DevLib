@@ -172,7 +172,7 @@ SharedData<uint8_t> Sram_23K256::readSequentialBytes (uint16_t startAddress, uns
 	// send second half of address
 	LLPD::spi_master_send_and_recieve( m_SpiNum, (startAddress & 0b0000000011111111) );
 
-	SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
+	const SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
 
 	for ( unsigned int byte = 0; byte < sizeInBytes; byte++ )
 	{
@@ -184,6 +184,30 @@ SharedData<uint8_t> Sram_23K256::readSequentialBytes (uint16_t startAddress, uns
 	LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
 
 	return data;
+}
+
+void Sram_23K256::readSequentialBytes (uint16_t startAddress, const SharedData<uint8_t>& data)
+{
+	// pull cs low
+	LLPD::gpio_output_set( m_CSPort, m_CSPin, false );
+
+	// send read instruction
+	LLPD::spi_master_send_and_recieve( m_SpiNum, 0b00000011 );
+
+	// send first half of address
+	LLPD::spi_master_send_and_recieve( m_SpiNum, (startAddress >> 8) );
+
+	// send second half of address
+	LLPD::spi_master_send_and_recieve( m_SpiNum, (startAddress & 0b0000000011111111) );
+
+	for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+	{
+		// read data
+		data[byte] = LLPD::spi_master_send_and_recieve( m_SpiNum, 0b00000000 );
+	}
+
+	// pull cs high
+	LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
 }
 
 void Sram_23K256::writeToMedia (const SharedData<uint8_t>& data, const unsigned int address)
@@ -212,7 +236,7 @@ SharedData<uint8_t> Sram_23K256::readFromMedia (const unsigned int sizeInBytes, 
 	}
 	else
 	{
-		SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
+		const SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
 		uint8_t* dataPtr = data.getPtr();
 
 		for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
@@ -221,6 +245,23 @@ SharedData<uint8_t> Sram_23K256::readFromMedia (const unsigned int sizeInBytes, 
 		}
 
 		return data;
+	}
+}
+
+void Sram_23K256::readFromMedia (const unsigned int address, const SharedData<uint8_t>& data)
+{
+	if ( m_SequentialMode )
+	{
+		this->readSequentialBytes( address, data );
+	}
+	else
+	{
+		uint8_t* dataPtr = data.getPtr();
+
+		for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+		{
+			dataPtr[byte] = this->readByte( address + byte );
+		}
 	}
 }
 
@@ -281,7 +322,7 @@ void Sram_23K256_Manager::writeSequentialBytes (unsigned int startAddress, const
 
 SharedData<uint8_t> Sram_23K256_Manager::readSequentialBytes (unsigned int startAddress, unsigned int sizeInBytes)
 {
-	SharedData<uint8_t> retData = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
+	const SharedData<uint8_t> retData = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
 	unsigned int retDataIndex = 0;
 
 	for ( unsigned int sramNum = 0; sramNum < m_Srams.size(); sramNum++ )
@@ -290,6 +331,16 @@ SharedData<uint8_t> Sram_23K256_Manager::readSequentialBytes (unsigned int start
 	}
 
 	return retData;
+}
+
+void Sram_23K256_Manager::readSequentialBytes (unsigned int startAddress, const SharedData<uint8_t>& data)
+{
+	unsigned int retDataIndex = 0;
+
+	for ( unsigned int sramNum = 0; sramNum < m_Srams.size(); sramNum++ )
+	{
+		this->readSequentialBytesHelper( startAddress, data, sramNum, retDataIndex );
+	}
 }
 
 void Sram_23K256_Manager::writeToMedia (const SharedData<uint8_t>& data, const unsigned int address)
@@ -317,7 +368,7 @@ SharedData<uint8_t> Sram_23K256_Manager::readFromMedia (const unsigned int sizeI
 	}
 	else
 	{
-		SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
+		const SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sizeInBytes );
 		uint8_t* dataPtr = data.getPtr();
 
 		for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
@@ -326,6 +377,23 @@ SharedData<uint8_t> Sram_23K256_Manager::readFromMedia (const unsigned int sizeI
 		}
 
 		return data;
+	}
+}
+
+void Sram_23K256_Manager::readFromMedia (const unsigned int address, const SharedData<uint8_t>& data)
+{
+	if ( m_Srams[0].getSequentialMode() )
+	{
+		this->readSequentialBytes( address, data );
+	}
+	else
+	{
+		uint8_t* dataPtr = data.getPtr();
+
+		for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+		{
+			dataPtr[byte] = this->readByte( address + byte );
+		}
 	}
 }
 
@@ -366,13 +434,13 @@ void Sram_23K256_Manager::writeSequentialBytesHelper (unsigned int startAddress,
 	if ( sramStart != (sramSize * (sramNum + 1)) && sramEnd != (sramSize * (sramNum + 1)) )
 	{
 		const unsigned int sizeToWrite = ( sramEnd - sramStart ) + 1;
-		SharedData<uint8_t> dataFragment = SharedData<uint8_t>::MakeSharedDataFromRange( data, dataIndex, dataIndex + sizeToWrite - 1 );
+		const SharedData<uint8_t> dataFragment = SharedData<uint8_t>::MakeSharedData( sizeToWrite, data.getPtr() + dataIndex );
 		m_Srams[sramNum].writeSequentialBytes( sramStart, dataFragment );
 		dataIndex += sizeToWrite;
 	}
 }
 
-void Sram_23K256_Manager::readSequentialBytesHelper (unsigned int startAddress, SharedData<uint8_t>& data, unsigned int sramNum,
+void Sram_23K256_Manager::readSequentialBytesHelper (unsigned int startAddress, const SharedData<uint8_t>& data, unsigned int sramNum,
 							unsigned int& dataIndex)
 {
 	// just to shorted variable names and make things a bit more readable
@@ -387,14 +455,7 @@ void Sram_23K256_Manager::readSequentialBytesHelper (unsigned int startAddress, 
 	if ( sramStart != (sramSize * (sramNum + 1)) && sramEnd != (sramSize * (sramNum + 1)) )
 	{
 		const unsigned int sizeToRead = ( sramEnd - sramStart ) + 1;
-		SharedData<uint8_t> sramData = m_Srams[sramNum].readSequentialBytes( sramStart, sizeToRead );
-		uint8_t* dataPtr = data.getPtr();
-
-		// fill the output data with sram bytes
-		for ( unsigned int byte = 0; byte < sizeToRead; byte++ )
-		{
-			dataPtr[dataIndex] = sramData[byte];
-			dataIndex++;
-		}
+		m_Srams[sramNum].readSequentialBytes( sramStart, data );
+		dataIndex += sizeToRead;
 	}
 }

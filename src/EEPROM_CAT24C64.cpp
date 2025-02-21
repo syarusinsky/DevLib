@@ -85,6 +85,16 @@ SharedData<uint8_t> Eeprom_CAT24C64::readFromMedia (const unsigned int sizeInByt
 	return data;
 }
 
+void Eeprom_CAT24C64::readFromMedia (const unsigned int address, const SharedData<uint8_t>& data)
+{
+	uint8_t* dataPtr = data.getPtr();
+
+	for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+	{
+		dataPtr[byte] = this->readByte( address + byte );
+	}
+}
+
 Eeprom_CAT24C64_Manager::Eeprom_CAT24C64_Manager (const I2C_NUM& i2cNum, const std::vector<Eeprom_CAT24C64_AddressConfig>& addressConfigs) :
 	m_Eeproms()
 {

@@ -29,9 +29,11 @@ class Sram_23K256 : public IStorageMedia
 
 		void writeSequentialBytes (uint16_t startAddress, const SharedData<uint8_t>& data);
 		SharedData<uint8_t> readSequentialBytes (uint16_t startAddress, unsigned int sizeInBytes);
+		void readSequentialBytes (uint16_t startAddress, const SharedData<uint8_t>& data);
 
 		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int address) override;
 		SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int address) override;
+		void readFromMedia (const unsigned int sizeInBytes, const SharedData<uint8_t>& data) override;
 
 		virtual bool needsInitialization() override { return false; }
 		virtual void initialize() override {}
@@ -68,9 +70,11 @@ class Sram_23K256_Manager : public IStorageMedia
 		uint8_t readByte (uint32_t address);
 		void writeSequentialBytes (unsigned int startAddress, const SharedData<uint8_t>& data);
 		SharedData<uint8_t> readSequentialBytes (unsigned int startAddress, unsigned int sizeInBytes);
+		void readSequentialBytes (unsigned int startAddress, const SharedData<uint8_t>& data);
 
 		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int address) override;
 		SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int address) override;
+		void readFromMedia (const unsigned int address, const SharedData<uint8_t>& data) override;
 
 		virtual bool needsInitialization() override { return false; }
 		virtual void initialize() override {}
@@ -83,7 +87,7 @@ class Sram_23K256_Manager : public IStorageMedia
 		unsigned int clipEndAddress (unsigned int endAddress, unsigned int sizeInBytes, unsigned int sramNum);
 		void writeSequentialBytesHelper (unsigned int startAddress, const SharedData<uint8_t>& data, unsigned int sramNum,
 						unsigned int& dataIndex);
-		void readSequentialBytesHelper (unsigned int startAddress, SharedData<uint8_t>& data, unsigned int sramNum,
+		void readSequentialBytesHelper (unsigned int startAddress, const SharedData<uint8_t>& data, unsigned int sramNum,
 						unsigned int& dataIndex);
 };
 
