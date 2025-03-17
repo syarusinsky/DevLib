@@ -27,10 +27,13 @@ class Sram_23K256 : public IStorageMedia
 		void writeByte (uint16_t address, uint8_t data);
 		uint8_t readByte (uint16_t address);
 
-		void writeSequentialBytes (uint16_t startAddress, const SharedData<uint8_t>& data);
+		void writeSequentialBytes (uint16_t startAddress, const SharedData<uint8_t>& data, bool useDma = false,
+						GPIO_PORT* csPortForCallback = nullptr, GPIO_PIN* csPinForCallback = nullptr);
 		SharedData<uint8_t> readSequentialBytes (uint16_t startAddress, unsigned int sizeInBytes);
-		void readSequentialBytes (uint16_t startAddress, const SharedData<uint8_t>& data);
+		void readSequentialBytes (uint16_t startAddress, const SharedData<uint8_t>& data, bool useDma = false,
+						GPIO_PORT* csPortForCallback = nullptr, GPIO_PIN* csPinForCallback = nullptr);
 
+		// writeToMedia and readFromMedia do not use DMA, to use these functions with DMA you should use Sram_23K256_Manager
 		void writeToMedia (const SharedData<uint8_t>& data, const unsigned int address) override;
 		SharedData<uint8_t> readFromMedia (const unsigned int sizeInBytes, const unsigned int address) override;
 		void readFromMedia (const unsigned int sizeInBytes, const SharedData<uint8_t>& data) override;
@@ -80,8 +83,17 @@ class Sram_23K256_Manager : public IStorageMedia
 		virtual void initialize() override {}
 		virtual void afterInitialize() override {}
 
+		// sets the function pointers to the private static dma functions
+		void setDmaMode (std::function<void()>* txComplete, std::function<void()>* rxComplete);
+		bool dmaTransferComplete();
+
 	private:
 		std::vector<Sram_23K256> 	m_Srams;
+		bool 				m_DmaMode;
+		bool 				m_DmaWriting; // if not writing, then reading
+		GPIO_PORT 			m_CsPortForCallback; // on dma callbacks
+		GPIO_PIN 			m_CsPinForCallback;
+		std::vector<std::pair<std::pair<unsigned int, uint16_t>, SharedData<uint8_t>>> 	m_DmaQueue; // sram num, sram address, data
 
 		unsigned int clipStartAddress (unsigned int startAddress, unsigned int sizeInBytes, unsigned int sramNum);
 		unsigned int clipEndAddress (unsigned int endAddress, unsigned int sizeInBytes, unsigned int sramNum);
@@ -89,6 +101,9 @@ class Sram_23K256_Manager : public IStorageMedia
 						unsigned int& dataIndex);
 		void readSequentialBytesHelper (unsigned int startAddress, const SharedData<uint8_t>& data, unsigned int sramNum,
 						unsigned int& dataIndex);
+
+		void dmaTxCompleteCallback();
+		void dmaRxCompleteCallback();
 };
 
 #endif // SRAM_23K256_HPP

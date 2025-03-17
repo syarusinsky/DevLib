@@ -134,7 +134,7 @@ uint8_t Sram_23K256::readByte (uint16_t address)
 	return data;
 }
 
-void Sram_23K256::writeSequentialBytes (uint16_t startAddress, const SharedData<uint8_t>& data)
+void Sram_23K256::writeSequentialBytes (uint16_t startAddress, const SharedData<uint8_t>& data, bool useDma, GPIO_PORT* csPortForCallback, GPIO_PIN* csPinForCallback)
 {
 	// pull cs low
 	LLPD::gpio_output_set( m_CSPort, m_CSPin, false );
@@ -148,14 +148,24 @@ void Sram_23K256::writeSequentialBytes (uint16_t startAddress, const SharedData<
 	// send second half of address
 	LLPD::spi_master_send_and_recieve( m_SpiNum, (startAddress & 0b0000000011111111) );
 
-	for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+	if ( useDma )
 	{
-		// send data
-		LLPD::spi_master_send_and_recieve( m_SpiNum, data[byte] );
+		LLPD::spi2_dma_start( data.getPtr(), data.getPtr(), data.getSizeInBytes() );
+		// cs pulled high in callback
+		*csPortForCallback = m_CSPort;
+		*csPinForCallback = m_CSPin;
 	}
+	else // not using DMA
+	{
+		for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+		{
+			// send data
+			LLPD::spi_master_send_and_recieve( m_SpiNum, data[byte] );
+		}
 
-	// pull cs high
-	LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
+		// pull cs high
+		LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
+	}
 }
 
 SharedData<uint8_t> Sram_23K256::readSequentialBytes (uint16_t startAddress, unsigned int sizeInBytes)
@@ -186,7 +196,7 @@ SharedData<uint8_t> Sram_23K256::readSequentialBytes (uint16_t startAddress, uns
 	return data;
 }
 
-void Sram_23K256::readSequentialBytes (uint16_t startAddress, const SharedData<uint8_t>& data)
+void Sram_23K256::readSequentialBytes (uint16_t startAddress, const SharedData<uint8_t>& data, bool useDma, GPIO_PORT* csPortForCallback, GPIO_PIN* csPinForCallback)
 {
 	// pull cs low
 	LLPD::gpio_output_set( m_CSPort, m_CSPin, false );
@@ -200,14 +210,24 @@ void Sram_23K256::readSequentialBytes (uint16_t startAddress, const SharedData<u
 	// send second half of address
 	LLPD::spi_master_send_and_recieve( m_SpiNum, (startAddress & 0b0000000011111111) );
 
-	for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+	if ( useDma )
 	{
-		// read data
-		data[byte] = LLPD::spi_master_send_and_recieve( m_SpiNum, 0b00000000 );
+		LLPD::spi2_dma_start( data.getPtr(), data.getPtr(), data.getSizeInBytes() );
+		// cs pulled high in callback
+		*csPortForCallback = m_CSPort;
+		*csPinForCallback = m_CSPin;
 	}
+	else // not using dma
+	{
+		for ( unsigned int byte = 0; byte < data.getSizeInBytes(); byte++ )
+		{
+			// read data
+			data[byte] = LLPD::spi_master_send_and_recieve( m_SpiNum, 0b00000000 );
+		}
 
-	// pull cs high
-	LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
+		// pull cs high
+		LLPD::gpio_output_set( m_CSPort, m_CSPin, true );
+	}
 }
 
 void Sram_23K256::writeToMedia (const SharedData<uint8_t>& data, const unsigned int address)
@@ -266,7 +286,12 @@ void Sram_23K256::readFromMedia (const unsigned int address, const SharedData<ui
 }
 
 Sram_23K256_Manager::Sram_23K256_Manager (const SPI_NUM& spiNum, const std::vector<Sram_23K256_GPIO_Config>& gpioConfigs) :
-	m_Srams()
+	m_Srams(),
+	m_DmaMode( false ),
+	m_DmaWriting( false ),
+	m_CsPortForCallback( GPIO_PORT::A ),
+	m_CsPinForCallback( GPIO_PIN::PIN_0 ),
+	m_DmaQueue()
 {
 	for ( const Sram_23K256_GPIO_Config& gpioConfig : gpioConfigs )
 	{
@@ -318,6 +343,18 @@ void Sram_23K256_Manager::writeSequentialBytes (unsigned int startAddress, const
 	{
 		this->writeSequentialBytesHelper( startAddress, data, sramNum, dataIndex );
 	}
+
+	if ( m_DmaMode )
+	{
+		unsigned int sramNum = m_DmaQueue.back().first.first;
+		uint16_t address = m_DmaQueue.back().first.second;
+		SharedData<uint8_t>& data = m_DmaQueue.back().second;
+
+		m_DmaWriting = true;
+
+		// start dma transfer
+		m_Srams[sramNum].writeSequentialBytes( address, data, true, &m_CsPortForCallback, &m_CsPinForCallback );
+	}
 }
 
 SharedData<uint8_t> Sram_23K256_Manager::readSequentialBytes (unsigned int startAddress, unsigned int sizeInBytes)
@@ -340,6 +377,18 @@ void Sram_23K256_Manager::readSequentialBytes (unsigned int startAddress, const 
 	for ( unsigned int sramNum = 0; sramNum < m_Srams.size(); sramNum++ )
 	{
 		this->readSequentialBytesHelper( startAddress, data, sramNum, retDataIndex );
+	}
+
+	if ( m_DmaMode )
+	{
+		unsigned int sramNum = m_DmaQueue.back().first.first;
+		uint16_t address = m_DmaQueue.back().first.second;
+		SharedData<uint8_t>& data = m_DmaQueue.back().second;
+
+		m_DmaWriting = false;
+
+		// start dma transfer
+		m_Srams[sramNum].readSequentialBytes( address, data, true, &m_CsPortForCallback, &m_CsPinForCallback );
 	}
 }
 
@@ -434,8 +483,19 @@ void Sram_23K256_Manager::writeSequentialBytesHelper (unsigned int startAddress,
 	if ( sramStart != (sramSize * (sramNum + 1)) && sramEnd != (sramSize * (sramNum + 1)) )
 	{
 		const unsigned int sizeToWrite = ( sramEnd - sramStart ) + 1;
-		const SharedData<uint8_t> dataFragment = SharedData<uint8_t>::MakeSharedData( sizeToWrite, data.getPtr() + dataIndex );
-		m_Srams[sramNum].writeSequentialBytes( sramStart, dataFragment );
+
+		if ( m_DmaMode )
+		{
+			SharedData<uint8_t> queueData = SharedData<uint8_t>::MakeSharedData( sizeToWrite, data.getPtr() + dataIndex );
+			std::pair<unsigned int, uint16_t> queuePair = std::pair<unsigned int, uint16_t>( sramNum, sramStart % Sram_23K256::SRAM_SIZE );
+			m_DmaQueue.emplace_back( queuePair, queueData );
+		}
+		else // not using dma
+		{
+			const SharedData<uint8_t> dataFragment = SharedData<uint8_t>::MakeSharedData( sizeToWrite, data.getPtr() + dataIndex );
+			m_Srams[sramNum].writeSequentialBytes( sramStart % Sram_23K256::SRAM_SIZE, dataFragment );
+		}
+
 		dataIndex += sizeToWrite;
 	}
 }
@@ -455,7 +515,61 @@ void Sram_23K256_Manager::readSequentialBytesHelper (unsigned int startAddress, 
 	if ( sramStart != (sramSize * (sramNum + 1)) && sramEnd != (sramSize * (sramNum + 1)) )
 	{
 		const unsigned int sizeToRead = ( sramEnd - sramStart ) + 1;
-		m_Srams[sramNum].readSequentialBytes( sramStart, data );
+
+		if ( m_DmaMode )
+		{
+			SharedData<uint8_t> queueData = SharedData<uint8_t>::MakeSharedData( sizeToRead, data.getPtr() + dataIndex );
+			std::pair<unsigned int, uint16_t> queuePair = std::pair<unsigned int, uint16_t>( sramNum, sramStart % Sram_23K256::SRAM_SIZE );
+			m_DmaQueue.emplace_back( queuePair, queueData );
+		}
+		else // not using dma
+		{
+			const SharedData<uint8_t> dataFragment = SharedData<uint8_t>::MakeSharedData( sizeToRead, data.getPtr() + dataIndex );
+			m_Srams[sramNum].readSequentialBytes( sramStart % Sram_23K256::SRAM_SIZE, dataFragment );
+		}
+
 		dataIndex += sizeToRead;
+	}
+}
+
+void Sram_23K256_Manager::setDmaMode (std::function<void()>* txComplete, std::function<void()>* rxComplete)
+{
+	*txComplete = std::bind( &Sram_23K256_Manager::dmaTxCompleteCallback, this );
+	*rxComplete = std::bind( &Sram_23K256_Manager::dmaRxCompleteCallback, this );
+	m_DmaMode = true;
+}
+
+bool Sram_23K256_Manager::dmaTransferComplete()
+{
+	return m_DmaQueue.empty();
+}
+
+void Sram_23K256_Manager::dmaTxCompleteCallback()
+{
+}
+
+void Sram_23K256_Manager::dmaRxCompleteCallback()
+{
+	// pull cs high
+	LLPD::gpio_output_set( m_CsPortForCallback, m_CsPinForCallback, true );
+
+	m_DmaQueue.pop_back();
+
+	if ( ! m_DmaQueue.empty() )
+	{
+		// continue reading or writing from the queue
+		unsigned int sramNum = m_DmaQueue.back().first.first;
+		uint16_t address = m_DmaQueue.back().first.second;
+		SharedData<uint8_t>& data = m_DmaQueue.back().second;
+
+		// start dma transfer
+		if ( m_DmaWriting )
+		{
+			m_Srams[sramNum].writeSequentialBytes( address, data, true, &m_CsPortForCallback, &m_CsPinForCallback );
+		}
+		else // dma reading
+		{
+			m_Srams[sramNum].readSequentialBytes( address, data, true, &m_CsPortForCallback, &m_CsPinForCallback );
+		}
 	}
 }

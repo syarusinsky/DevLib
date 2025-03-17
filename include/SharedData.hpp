@@ -26,28 +26,34 @@ class SharedData
 			m_RefCount  = other.m_RefCount;
 			m_Allocator = other.m_Allocator;
 
-			(*m_RefCount)++;
+			if ( m_RefCount )
+			{
+				(*m_RefCount)++;
+			}
 		}
 		~SharedData()
 		{
-			(*m_RefCount)--;
-
-			if ( m_RefCount->getCount() == 0 )
+			if ( m_RefCount )
 			{
-				if ( m_Data )
-				{
-					m_TotalBytesAllocated -= ( m_Size * sizeof(T) );
-					if ( m_Allocator )
-					{
-						m_Allocator->free( m_Data );
-					}
-					else if ( m_DeleteUnderlyingDataIfNoRefs )
-					{
-						delete[] m_Data;
-					}
-				}
+				(*m_RefCount)--;
 
-				delete m_RefCount;
+				if ( m_RefCount->getCount() == 0 )
+				{
+					if ( m_Data )
+					{
+						m_TotalBytesAllocated -= ( m_Size * sizeof(T) );
+						if ( m_Allocator )
+						{
+							m_Allocator->free( m_Data );
+						}
+						else
+						{
+							delete[] m_Data;
+						}
+					}
+
+					delete m_RefCount;
+				}
 			}
 		}
 
@@ -139,7 +145,10 @@ class SharedData
 			m_RefCount  = other.m_RefCount;
 			m_Allocator = other.m_Allocator;
 
-			(*m_RefCount)++;
+			if ( m_RefCount )
+			{
+				(*m_RefCount)++;
+			}
 
 			return *this;
 		}
@@ -182,50 +191,53 @@ class SharedData
 		T* 		m_Data = nullptr;
 		Counter* 	m_RefCount = nullptr;
 		IAllocator* 	m_Allocator = nullptr;
-		bool 		m_DeleteUnderlyingDataIfNoRefs = true;
 
 		SharedData (unsigned int size, T* data, IAllocator* allocator = nullptr, bool deleteUnderlyingDataIfNoRefs = true) :
 			m_Size( size ),
 			m_Data( data ),
-			m_RefCount( new Counter() ),
-			m_Allocator( allocator ),
-			m_DeleteUnderlyingDataIfNoRefs( deleteUnderlyingDataIfNoRefs )
+			m_RefCount( (deleteUnderlyingDataIfNoRefs) ? new Counter() : nullptr ),
+			m_Allocator( allocator )
 		{
-			(*m_RefCount)++;
+			if ( m_RefCount )
+			{
+				(*m_RefCount)++;
+			}
 		}
 
 		SharedData() :
 			m_Size( 0 ),
 			m_Data( nullptr ),
 			m_RefCount( new Counter() ),
-			m_Allocator( nullptr ),
-			m_DeleteUnderlyingDataIfNoRefs( true )
+			m_Allocator( nullptr )
 		{
 			(*m_RefCount)++;
 		}
 
 		void decrementAndDeletePreviousUnderlyingDataIfNecessary (const SharedData& other)
 		{
-			if ( m_Data && m_Data != other.m_Data )
+			if ( m_RefCount )
 			{
-				(*m_RefCount)--;
-
-				if ( m_RefCount->getCount() == 0 )
+				if ( m_Data && m_Data != other.m_Data )
 				{
-					if ( m_Data )
-					{
-						m_TotalBytesAllocated -= ( m_Size * sizeof(T) );
-						if ( m_Allocator )
-						{
-							m_Allocator->free( m_Data );
-						}
-						else
-						{
-							delete[] m_Data;
-						}
-					}
+					(*m_RefCount)--;
 
-					delete m_RefCount;
+					if ( m_RefCount->getCount() == 0 )
+					{
+						if ( m_Data )
+						{
+							m_TotalBytesAllocated -= ( m_Size * sizeof(T) );
+							if ( m_Allocator )
+							{
+								m_Allocator->free( m_Data );
+							}
+							else
+							{
+								delete[] m_Data;
+							}
+						}
+
+						delete m_RefCount;
+					}
 				}
 			}
 		}
