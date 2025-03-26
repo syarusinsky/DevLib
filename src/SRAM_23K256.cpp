@@ -572,4 +572,8 @@ void Sram_23K256_Manager::dmaRxCompleteCallback()
 			m_Srams[sramNum].readSequentialBytes( address, data, true, &m_CsPortForCallback, &m_CsPinForCallback );
 		}
 	}
+	else // dma queue has been emptied
+	{
+		m_DmaTransferCompleteCallback();
+	}
 }

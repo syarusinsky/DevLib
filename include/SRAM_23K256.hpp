@@ -85,6 +85,7 @@ class Sram_23K256_Manager : public IStorageMedia
 
 		// sets the function pointers to the private static dma functions
 		void setDmaMode (std::function<void()>* txComplete, std::function<void()>* rxComplete);
+		void setDmaTransferCompleteCallback (std::function<void()> callback) { m_DmaTransferCompleteCallback = callback; }
 		bool dmaTransferComplete();
 
 	private:
@@ -94,6 +95,7 @@ class Sram_23K256_Manager : public IStorageMedia
 		GPIO_PORT 			m_CsPortForCallback; // on dma callbacks
 		GPIO_PIN 			m_CsPinForCallback;
 		std::vector<std::pair<std::pair<unsigned int, uint16_t>, SharedData<uint8_t>>> 	m_DmaQueue; // sram num, sram address, data
+		std::function<void()> 		m_DmaTransferCompleteCallback;
 
 		unsigned int clipStartAddress (unsigned int startAddress, unsigned int sizeInBytes, unsigned int sramNum);
 		unsigned int clipEndAddress (unsigned int endAddress, unsigned int sizeInBytes, unsigned int sramNum);
